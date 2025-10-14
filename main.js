@@ -2,7 +2,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const size = 8;
 const tileSize = 40;
-const emojis = ['🔵','🟠','🟢','🟣','🔴'];
+// 0-4 = piese normale, 5 = bombă linie, 6 = bombă coloană, 7 = piatră
+const emojis = ['🔵','🟠','🟢','🟣','🔴','💥','💣','🪨'];
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
 let score = 0;
@@ -10,14 +11,29 @@ let moves = 20;
 let gameOver = false;
 const obiectiv = 500;
 let highscore = Number(localStorage.getItem("match3-highscore")) || 0;
-let fadeMap = Array(size).fill().map(() => Array(size).fill(1)); // pentru animație
+let fadeMap = Array(size).fill().map(() => Array(size).fill(1));
 
+const swapSound = document.getElementById('swapSound');
+const matchSound = document.getElementById('matchSound');
+const powerSound = document.getElementById('powerSound');
+
+function randomNormalPiece() {
+  return Math.floor(Math.random() * 5); // 0-4
+}
+
+// Inițializează grila cu piese și câteva pietre
 function initGrid() {
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      grid[y][x] = Math.floor(Math.random() * emojis.length);
+      grid[y][x] = randomNormalPiece();
       fadeMap[y][x] = 1;
     }
+  }
+  // Adaugă 5 pietre random
+  for (let i=0; i<5; i++) {
+    let x = Math.floor(Math.random()*size);
+    let y = Math.floor(Math.random()*size);
+    grid[y][x] = 7; // piatră
   }
 }
 
@@ -77,20 +93,27 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-// detectMatches poate primi un grid alternativ (pentru testarea swap-ului)
+// detectMatches returnează: matrice de piese de eliminat + posibile power-up-uri
 function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
+  let powerups = [];
   // Orizontal
   for (let y = 0; y < size; y++) {
     let count = 1;
     for (let x = 1; x < size; x++) {
-      if (testGrid[y][x] !== -1 && testGrid[y][x] === testGrid[y][x - 1]) {
+      if (
+        testGrid[y][x] !== -1 && testGrid[y][x] !== 7 && // să nu fie piatră
+        testGrid[y][x] === testGrid[y][x - 1]
+      ) {
         count++;
       } else {
         if (count >= 3) {
           for (let k = 0; k < count; k++) {
             toRemove[y][x - k - 1] = true;
           }
+          // Power-up: bombă de linie (match de 4 sau 5)
+          if (count === 4) powerups.push({y, x: x-2, type: 5});
+          if (count >=5) powerups.push({y, x: x-3, type: 6});
         }
         count = 1;
       }
@@ -99,19 +122,27 @@ function detectMatches(testGrid = grid) {
       for (let k = 0; k < count; k++) {
         toRemove[y][size - k - 1] = true;
       }
+      if (count === 4) powerups.push({y, x: size-2, type: 5});
+      if (count >=5) powerups.push({y, x: size-3, type: 6});
     }
   }
   // Vertical
   for (let x = 0; x < size; x++) {
     let count = 1;
     for (let y = 1; y < size; y++) {
-      if (testGrid[y][x] !== -1 && testGrid[y][x] === testGrid[y - 1][x]) {
+      if (
+        testGrid[y][x] !== -1 && testGrid[y][x] !== 7 &&
+        testGrid[y][x] === testGrid[y-1][x]
+      ) {
         count++;
       } else {
         if (count >= 3) {
           for (let k = 0; k < count; k++) {
             toRemove[y - k - 1][x] = true;
           }
+          // Power-up: bombă de linie/coloană
+          if (count === 4) powerups.push({y: y-2, x, type: 5});
+          if (count >= 5) powerups.push({y: y-3, x, type: 6});
         }
         count = 1;
       }
@@ -120,9 +151,11 @@ function detectMatches(testGrid = grid) {
       for (let k = 0; k < count; k++) {
         toRemove[size - k - 1][x] = true;
       }
+      if (count === 4) powerups.push({y: size-2, x, type: 5});
+      if (count >= 5) powerups.push({y: size-3, x, type: 6});
     }
   }
-  return toRemove;
+  return {toRemove, powerups};
 }
 
 function hasAnyMatch(matches) {
@@ -157,7 +190,8 @@ function animateRemoval(matches, callback) {
   animStep();
 }
 
-function removeMatches(matches) {
+// Eliminare piese și generare power-up-uri (bombă)
+function removeMatches(matches, powerups) {
   let removed = 0;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -167,10 +201,15 @@ function removeMatches(matches) {
       }
     }
   }
+  // Generează power-up-uri pe locul potrivit
+  for (const p of powerups) {
+    grid[p.y][p.x] = p.type;
+  }
   score += removed * 10;
   return removed > 0;
 }
 
+// Cădere piese + generare piese noi
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
@@ -181,7 +220,7 @@ function collapseGrid() {
       }
     }
     for (let y = pointer; y >= 0; y--) {
-      grid[y][x] = Math.floor(Math.random() * emojis.length);
+      grid[y][x] = randomNormalPiece();
     }
   }
 }
@@ -194,19 +233,55 @@ canvas.addEventListener('click', function(e) {
 
   if (x < 0 || x >= size || y < 0 || y >= size) return;
 
+  // Obstacol/piatră nu se poate selecta
+  if (grid[y][x] === 7) return;
+
+  // Power-up: click pe bombă
+  if (grid[y][x] === 5) { // bombă linie
+    grid[y].fill(-1);
+    score += size * 10;
+    powerSound.play();
+    drawGrid();
+    setTimeout(function() {
+      collapseGrid();
+      drawGrid();
+      setTimeout(function() {
+        processMatches();
+      }, 200);
+    }, 200);
+    return;
+  }
+  if (grid[y][x] === 6) { // bombă coloană
+    for (let yy=0; yy<size; yy++) grid[yy][x] = -1;
+    score += size * 10;
+    powerSound.play();
+    drawGrid();
+    setTimeout(function() {
+      collapseGrid();
+      drawGrid();
+      setTimeout(function() {
+        processMatches();
+      }, 200);
+    }, 200);
+    return;
+  }
+
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
       // Swap temporar și verificăm dacă rezultă match
+      if (grid[x][y] === 7 || grid[selected.y][selected.x] === 7) return; // nu poți muta pietre
+
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
       drawGrid();
 
-      // Construim un grid de test pentru detectMatches
-      let testGrid = grid.map(row => row.slice());
-      let testMatches = detectMatches(testGrid);
+      swapSound.play();
 
-      if (hasAnyMatch(testMatches)) {
+      let testGrid = grid.map(row => row.slice());
+      let {toRemove, powerups} = detectMatches(testGrid);
+
+      if (hasAnyMatch(toRemove)) {
         selected = null;
         moves--;
         if (moves <= 0) gameOver = true;
@@ -234,10 +309,11 @@ canvas.addEventListener('click', function(e) {
 });
 
 function processMatches() {
-  let matches = detectMatches();
-  if (hasAnyMatch(matches)) {
-    animateRemoval(matches, function() {
-      removeMatches(matches);
+  let {toRemove, powerups} = detectMatches();
+  if (hasAnyMatch(toRemove)) {
+    matchSound.play();
+    animateRemoval(toRemove, function() {
+      removeMatches(toRemove, powerups);
       drawGrid();
       setTimeout(function() {
         collapseGrid();
