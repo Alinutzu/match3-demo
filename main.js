@@ -3,7 +3,7 @@ const ctx = canvas.getContext('2d');
 const size = 8;
 const tileSize = 40;
 // 0-4 = piese normale, 5 = bombă linie, 6 = bombă coloană, 7 = piatră
-const emojis = ['🔵','🟠','🟢','🟣','🔴','💥','💣','🪨'];
+const emojis = ['🔵','🟠','🟢','🟣','🔴','💥','💣','🧱'];
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
 let score = 0;
