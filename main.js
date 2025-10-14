@@ -19,13 +19,9 @@ function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (grid[y][x] === -1) {
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
-      } else {
-        ctx.fillStyle = colors[grid[y][x]];
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
-      }
+      ctx.fillStyle = grid[y][x] === -1 ? "#fff" : colors[grid[y][x]];
+      ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
+
       if (selected && selected.x === x && selected.y === y) {
         ctx.strokeStyle = "#000";
         ctx.lineWidth = 3;
@@ -42,7 +38,7 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-// Detectează match-uri și returnează matrice de eliminat
+// Detectează toate piesele care trebuie eliminate (true în matrice)
 function detectMatches() {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
 
@@ -55,7 +51,7 @@ function detectMatches() {
       } else {
         if (count >= 3) {
           for (let k = 0; k < count; k++) {
-            toRemove[y][x - k - 1] = true; // corect!
+            toRemove[y][x - k - 1] = true;
           }
         }
         count = 1;
@@ -77,7 +73,7 @@ function detectMatches() {
       } else {
         if (count >= 3) {
           for (let k = 0; k < count; k++) {
-            toRemove[y - k - 1][x] = true; // corect!
+            toRemove[y - k - 1][x] = true;
           }
         }
         count = 1;
@@ -94,16 +90,16 @@ function detectMatches() {
 }
 
 function removeMatches(matches) {
-  let removed = 0;
+  let found = false;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (matches[y][x]) {
         grid[y][x] = -1;
-        removed++;
+        found = true;
       }
     }
   }
-  return removed;
+  return found;
 }
 
 function collapseGrid() {
@@ -129,6 +125,7 @@ canvas.addEventListener('click', function(e) {
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
+      // Swap piesele
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
@@ -150,14 +147,7 @@ canvas.addEventListener('click', function(e) {
 
 function processMatches() {
   let matches = detectMatches();
-  let found = false;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (matches[y][x]) found = true;
-    }
-  }
-  if (found) {
-    removeMatches(matches);
+  if (removeMatches(matches)) {
     drawGrid();
     setTimeout(function() {
       collapseGrid();
