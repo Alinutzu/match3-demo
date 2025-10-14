@@ -8,7 +8,19 @@ canvas {
   border: 2px solid #48f;
   margin-top: 10px;
 }
-#score {
+#score, #highscore, #moves, #target {
   color: #222;
   font-weight: bold;
+}
+button {
+  font-size: 18px;
+  padding: 6px 20px;
+  background: #48f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover {
+  background: #3571e8;
 }
