@@ -77,6 +77,7 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
+// detectMatches poate primi un grid alternativ (pentru testarea swap-ului)
 function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
   // Orizontal
@@ -195,14 +196,16 @@ canvas.addEventListener('click', function(e) {
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
-      // Swap temporar
+      // Swap temporar și verificăm dacă rezultă match
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
       drawGrid();
 
-      // Verificăm dacă swap-ul a creat match
-      let testMatches = detectMatches();
+      // Construim un grid de test pentru detectMatches
+      let testGrid = grid.map(row => row.slice());
+      let testMatches = detectMatches(testGrid);
+
       if (hasAnyMatch(testMatches)) {
         selected = null;
         moves--;
@@ -211,7 +214,7 @@ canvas.addEventListener('click', function(e) {
           processMatches();
         }, 200);
       } else {
-        // Nu este match, undo swap
+        // Nu e match, swap-ul se anulează
         setTimeout(function() {
           let temp2 = grid[selected.y][selected.x];
           grid[selected.y][selected.x] = grid[y][x];
