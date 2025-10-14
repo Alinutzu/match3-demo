@@ -6,6 +6,7 @@ const colors = ['#48f', '#f84', '#4f8', '#f48', '#ff4'];
 
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
+let score = 0;
 
 function initGrid() {
   for (let y = 0; y < size; y++) {
@@ -29,6 +30,10 @@ function drawGrid() {
       }
     }
   }
+  // Desenăm scorul
+  ctx.font = "20px Arial";
+  ctx.fillStyle = "#222";
+  ctx.fillText("Scor: " + score, 10, 30);
 }
 
 function isAdjacent(x1, y1, x2, y2) {
@@ -38,10 +43,8 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-// Detectează toate piesele care trebuie eliminate (true în matrice)
 function detectMatches() {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
-
   // Orizontal
   for (let y = 0; y < size; y++) {
     let count = 1;
@@ -63,7 +66,6 @@ function detectMatches() {
       }
     }
   }
-
   // Vertical
   for (let x = 0; x < size; x++) {
     let count = 1;
@@ -85,21 +87,21 @@ function detectMatches() {
       }
     }
   }
-
   return toRemove;
 }
 
 function removeMatches(matches) {
-  let found = false;
+  let removed = 0;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (matches[y][x]) {
         grid[y][x] = -1;
-        found = true;
+        removed++;
       }
     }
   }
-  return found;
+  score += removed * 10; // fiecare piesă eliminată = 10 puncte
+  return removed > 0;
 }
 
 function collapseGrid() {
@@ -125,7 +127,6 @@ canvas.addEventListener('click', function(e) {
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
-      // Swap piesele
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
