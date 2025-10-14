@@ -3,35 +3,39 @@ const ctx = canvas.getContext('2d');
 const size = 8;
 const tileSize = 40;
 const baseEmojis = ['🔵','🟠','🟢','🟣','🔴','🟡','🟤'];
-// 0-5 = piese normale, 6 = bombă linie, 7 = bombă coloană, 8 = piatră
+// 0-6 = piese normale, 7 = bombă linie, 8 = bombă coloană, 9 = piatră
 let emojis = baseEmojis.slice(0,5).concat(['💥','💣','⬛']);
 
-const levels = [
-  { target: 300,   moves: 15, obstacles: 3, colors: 5, text: "Obține 300 puncte!" },
-  { target: 500,   moves: 20, obstacles: 5, colors: 5, text: "Obține 500 puncte!" },
-  { target: 800,   moves: 25, obstacles: 7, colors: 6, text: "Obține 800 puncte!" },
-  { target: 1200,  moves: 30, obstacles: 10, colors: 7, text: "Obține 1200 puncte!" }
-];
-
-let currentLevel = 0;
+let level = 1;
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
 let score = 0;
-let moves = levels[currentLevel].moves;
+let moves = 15;
 let gameOver = false;
 let fadeMap = Array(size).fill().map(() => Array(size).fill(1));
 let highscore = Number(localStorage.getItem("match3-highscore")) || 0;
+let objective = 300;
+let obstacles = 3;
+let colors = 5;
 
 const swapSound = document.getElementById('swapSound');
 const matchSound = document.getElementById('matchSound');
 const powerSound = document.getElementById('powerSound');
+const okLevelBtn = document.getElementById('okLevel');
+
+function updateLevelParameters() {
+  objective = 300 + 200 * (level - 1);
+  moves = 15 + 5 * (level - 1);
+  obstacles = 3 + 2 * (level - 1);
+  colors = Math.min(5 + Math.floor((level-1)/2), baseEmojis.length);
+  emojis = baseEmojis.slice(0,colors).concat(['💥','💣','⬛']);
+}
 
 function randomNormalPiece() {
-  return Math.floor(Math.random() * levels[currentLevel].colors); // 0...colors-1
+  return Math.floor(Math.random() * colors); // 0...colors-1
 }
 
 function initGrid() {
-  emojis = baseEmojis.slice(0,levels[currentLevel].colors).concat(['💥','💣','⬛']);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       grid[y][x] = randomNormalPiece();
@@ -40,10 +44,10 @@ function initGrid() {
   }
   // Adaugă pietre random
   let placed = 0;
-  while (placed < levels[currentLevel].obstacles) {
+  while (placed < obstacles) {
     let x = Math.floor(Math.random()*size);
     let y = Math.floor(Math.random()*size);
-    if (grid[y][x] < levels[currentLevel].colors) {
+    if (grid[y][x] < colors) {
       grid[y][x] = emojis.length-1; // indexul pentru piatră
       placed++;
     }
@@ -83,8 +87,8 @@ function drawGrid() {
   document.getElementById('score').innerText = "Scor: " + score;
   document.getElementById('moves').innerText = "Mutări rămase: " + moves;
   document.getElementById('highscore').innerText = "Highscore: " + highscore;
-  document.getElementById('target').innerText = levels[currentLevel].text;
-  document.getElementById('level').innerText = `Nivel: ${currentLevel+1}`;
+  document.getElementById('target').innerText = `Obiectiv: ${objective} puncte`;
+  document.getElementById('level').innerText = `Nivel: ${level}`;
 
   if (gameOver) {
     ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -92,12 +96,12 @@ function drawGrid() {
     ctx.font = "26px Arial";
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
-    if (score >= levels[currentLevel].target) {
-      ctx.fillText("Nivel trecut! 🎉", canvas.width/2, canvas.height/2 + 10);
-      document.getElementById('nextLevel').style.display = 
-        currentLevel < levels.length-1 ? "inline-block" : "none";
+    if (score >= objective) {
+      ctx.fillText(`Nivel ${level} complet!`, canvas.width/2, canvas.height/2 + 10);
+      okLevelBtn.style.display = "inline-block";
     } else {
       ctx.fillText("Ai pierdut! 😢", canvas.width/2, canvas.height/2 + 10);
+      okLevelBtn.style.display = "none";
     }
     ctx.textAlign = "start";
     if (score > highscore) {
@@ -105,6 +109,8 @@ function drawGrid() {
       localStorage.setItem("match3-highscore", highscore);
       document.getElementById('highscore').innerText = "Highscore: " + highscore;
     }
+  } else {
+    okLevelBtn.style.display = "none";
   }
 }
 
@@ -124,7 +130,7 @@ function detectMatches(testGrid = grid) {
     for (let x = 1; x < size; x++) {
       if (
         testGrid[y][x] !== -1 &&
-        testGrid[y][x] !== emojis.length-1 && // nu piatră
+        testGrid[y][x] !== emojis.length-1 &&
         testGrid[y][x] === testGrid[y][x - 1] &&
         testGrid[y][x-1] !== emojis.length-1
       ) {
@@ -344,26 +350,28 @@ function processMatches() {
 
 document.getElementById('restart').addEventListener('click', function() {
   score = 0;
-  moves = levels[currentLevel].moves;
+  updateLevelParameters();
+  moves = moves;
   gameOver = false;
   selected = null;
-  document.getElementById('nextLevel').style.display = "none";
+  okLevelBtn.style.display = "none";
   initGrid();
   drawGrid();
 });
 
-document.getElementById('nextLevel').addEventListener('click', function() {
-  currentLevel++;
-  if (currentLevel >= levels.length) currentLevel = levels.length-1;
+okLevelBtn.addEventListener('click', function() {
+  level++;
   score = 0;
-  moves = levels[currentLevel].moves;
+  updateLevelParameters();
+  moves = moves;
   gameOver = false;
   selected = null;
-  document.getElementById('nextLevel').style.display = "none";
+  okLevelBtn.style.display = "none";
   initGrid();
   drawGrid();
 });
 
 // Start joc
+updateLevelParameters();
 initGrid();
 drawGrid();
