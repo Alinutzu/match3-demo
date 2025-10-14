@@ -7,6 +7,8 @@ const colors = ['#48f', '#f84', '#4f8', '#f48', '#ff4'];
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
 let score = 0;
+let moves = 20;
+let gameOver = false;
 
 function initGrid() {
   for (let y = 0; y < size; y++) {
@@ -30,8 +32,17 @@ function drawGrid() {
       }
     }
   }
-  // Actualizează scorul în div
   document.getElementById('score').innerText = "Scor: " + score;
+  document.getElementById('moves').innerText = "Mutări rămase: " + moves;
+  if (gameOver) {
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(0, 120, canvas.width, 80);
+    ctx.font = "26px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText("Joc terminat!", canvas.width/2, canvas.height/2 + 10);
+    ctx.textAlign = "start";
+  }
 }
 
 function isAdjacent(x1, y1, x2, y2) {
@@ -98,7 +109,7 @@ function removeMatches(matches) {
       }
     }
   }
-  score += removed * 10; // fiecare piesă eliminată = 10 puncte
+  score += removed * 10;
   return removed > 0;
 }
 
@@ -118,6 +129,8 @@ function collapseGrid() {
 }
 
 canvas.addEventListener('click', function(e) {
+  if (gameOver) return;
+
   const x = Math.floor(e.offsetX / tileSize);
   const y = Math.floor(e.offsetY / tileSize);
 
@@ -129,11 +142,19 @@ canvas.addEventListener('click', function(e) {
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
       selected = null;
+
+      moves--;
+      if (moves <= 0) {
+        gameOver = true;
+      }
+
       drawGrid();
 
-      setTimeout(function() {
-        processMatches();
-      }, 200);
+      if (!gameOver) {
+        setTimeout(function() {
+          processMatches();
+        }, 200);
+      }
     } else {
       selected = {x, y};
       drawGrid();
@@ -157,6 +178,15 @@ function processMatches() {
     }, 200);
   }
 }
+
+document.getElementById('restart').addEventListener('click', function() {
+  score = 0;
+  moves = 20;
+  gameOver = false;
+  selected = null;
+  initGrid();
+  drawGrid();
+});
 
 initGrid();
 drawGrid();
