@@ -30,10 +30,8 @@ function drawGrid() {
       }
     }
   }
-  // Desenăm scorul
-  ctx.font = "20px Arial";
-  ctx.fillStyle = "#222";
-  ctx.fillText("Scor: " + score, 10, 30);
+  // Actualizează scorul în div
+  document.getElementById('score').innerText = "Scor: " + score;
 }
 
 function isAdjacent(x1, y1, x2, y2) {
