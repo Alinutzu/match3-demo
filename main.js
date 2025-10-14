@@ -1,4 +1,3 @@
-// Simplu joc Match-3 pe o grilă 8x8 cu 5 tipuri de piese, cu swap
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const size = 8;
@@ -6,7 +5,7 @@ const tileSize = 40;
 const colors = ['#48f', '#f84', '#4f8', '#f48', '#ff4'];
 
 let grid = Array(size).fill().map(() => Array(size).fill(0));
-let selected = null; // {x, y} - piesa selectată
+let selected = null; // {x, y}
 
 function initGrid() {
   for (let y = 0; y < size; y++) {
@@ -33,7 +32,7 @@ function drawGrid() {
   }
 }
 
-// Verifică dacă două piese sunt adiacente (vecine)
+// Verifică dacă două piese sunt adiacente
 function isAdjacent(x1, y1, x2, y2) {
   return (
     (Math.abs(x1 - x2) === 1 && y1 === y2) ||
@@ -42,10 +41,15 @@ function isAdjacent(x1, y1, x2, y2) {
 }
 
 // Handler click pe canvas
-canvas.addEventListener('click', function(e) {
+canvas.addEventListener('mousedown', function(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left) / tileSize);
-  const y = Math.floor((e.clientY - rect.top) / tileSize);
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const x = Math.floor(mx / tileSize);
+  const y = Math.floor(my / tileSize);
+
+  // Verifică dacă click-ul este pe grilă
+  if (x < 0 || x >= size || y < 0 || y >= size) return;
 
   if (selected) {
     // Dacă ai selectat deja o piesă, încearcă swap
@@ -56,9 +60,9 @@ canvas.addEventListener('click', function(e) {
       grid[y][x] = temp;
       selected = null;
       drawGrid();
-      // Următorul pas: detectare match-uri
+      // Urmează detectare match-uri!
     } else {
-      // Nu e adiacent, selectează altă piesă
+      // Selectează altă piesă
       selected = {x, y};
       drawGrid();
     }
