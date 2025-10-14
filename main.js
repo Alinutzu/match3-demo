@@ -2,7 +2,6 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const size = 8;
 const tileSize = 40;
-// Folosim emoji pentru piese
 const emojis = ['🔵','🟠','🟢','🟣','🔴'];
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
@@ -11,9 +10,7 @@ let moves = 20;
 let gameOver = false;
 const obiectiv = 500;
 let highscore = Number(localStorage.getItem("match3-highscore")) || 0;
-
-// Pentru animație: piesele care dispar au un fade (opacity)
-let fadeMap = Array(size).fill().map(() => Array(size).fill(1)); // 1=vizibil, 0=invizibil
+let fadeMap = Array(size).fill().map(() => Array(size).fill(1)); // pentru animație
 
 function initGrid() {
   for (let y = 0; y < size; y++) {
@@ -28,12 +25,10 @@ function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      // Piesa eliminată: nu desenăm emoji
       if (grid[y][x] === -1) {
         ctx.fillStyle = "#fff";
         ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
       } else {
-        // fadeMap controlează opacitatea pentru animație
         ctx.globalAlpha = fadeMap[y][x];
         ctx.fillStyle = "#fff";
         ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
@@ -55,7 +50,6 @@ function drawGrid() {
   document.getElementById('highscore').innerText = "Highscore: " + highscore;
   document.getElementById('target').innerText = `Obiectiv: ${obiectiv} puncte`;
 
-  // Mesaj de final de joc
   if (gameOver) {
     ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.fillRect(0, 120, canvas.width, 80);
@@ -68,7 +62,6 @@ function drawGrid() {
       ctx.fillText("Ai pierdut! 😢", canvas.width/2, canvas.height/2 + 10);
     }
     ctx.textAlign = "start";
-    // Highscore update
     if (score > highscore) {
       highscore = score;
       localStorage.setItem("match3-highscore", highscore);
@@ -84,13 +77,13 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-function detectMatches() {
+function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
   // Orizontal
   for (let y = 0; y < size; y++) {
     let count = 1;
     for (let x = 1; x < size; x++) {
-      if (grid[y][x] !== -1 && grid[y][x] === grid[y][x - 1]) {
+      if (testGrid[y][x] !== -1 && testGrid[y][x] === testGrid[y][x - 1]) {
         count++;
       } else {
         if (count >= 3) {
@@ -111,7 +104,7 @@ function detectMatches() {
   for (let x = 0; x < size; x++) {
     let count = 1;
     for (let y = 1; y < size; y++) {
-      if (grid[y][x] !== -1 && grid[y][x] === grid[y - 1][x]) {
+      if (testGrid[y][x] !== -1 && testGrid[y][x] === testGrid[y - 1][x]) {
         count++;
       } else {
         if (count >= 3) {
@@ -131,7 +124,13 @@ function detectMatches() {
   return toRemove;
 }
 
-// Animație de fade-out pe piesele eliminate
+function hasAnyMatch(matches) {
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++)
+      if (matches[y][x]) return true;
+  return false;
+}
+
 function animateRemoval(matches, callback) {
   let steps = 10;
   let current = 0;
@@ -196,22 +195,30 @@ canvas.addEventListener('click', function(e) {
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
+      // Swap temporar
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
-      selected = null;
-
-      moves--;
-      if (moves <= 0) {
-        gameOver = true;
-      }
-
       drawGrid();
 
-      if (!gameOver) {
+      // Verificăm dacă swap-ul a creat match
+      let testMatches = detectMatches();
+      if (hasAnyMatch(testMatches)) {
+        selected = null;
+        moves--;
+        if (moves <= 0) gameOver = true;
         setTimeout(function() {
           processMatches();
         }, 200);
+      } else {
+        // Nu este match, undo swap
+        setTimeout(function() {
+          let temp2 = grid[selected.y][selected.x];
+          grid[selected.y][selected.x] = grid[y][x];
+          grid[y][x] = temp2;
+          drawGrid();
+          selected = null;
+        }, 300);
       }
     } else {
       selected = {x, y};
@@ -225,7 +232,7 @@ canvas.addEventListener('click', function(e) {
 
 function processMatches() {
   let matches = detectMatches();
-  if (Object.values(matches).flat().some(Boolean)) {
+  if (hasAnyMatch(matches)) {
     animateRemoval(matches, function() {
       removeMatches(matches);
       drawGrid();
