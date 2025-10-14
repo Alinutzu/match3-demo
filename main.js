@@ -7,8 +7,6 @@ const colors = ['#48f', '#f84', '#4f8', '#f48', '#ff4'];
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
 
-// 0,1,2,3,4 = culori; -1 = piesă goală (eliminată)
-
 function initGrid() {
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -37,63 +35,64 @@ function drawGrid() {
   }
 }
 
-// Detectează match-uri (returnează o listă cu coordonate de eliminat)
-function detectMatches() {
-  let toRemove = Array(size)
-    .fill()
-    .map(() => Array(size).fill(false));
+function isAdjacent(x1, y1, x2, y2) {
+  return (
+    (Math.abs(x1 - x2) === 1 && y1 === y2) ||
+    (Math.abs(y1 - y2) === 1 && x1 === x2)
+  );
+}
 
-  // Orizontal (linii)
+// Detectează match-uri și returnează coordonate de eliminat
+function detectMatches() {
+  let toRemove = Array(size).fill().map(() => Array(size).fill(false));
+
+  // Orizontal
   for (let y = 0; y < size; y++) {
     let count = 1;
     for (let x = 1; x < size; x++) {
-      if (
-        grid[y][x] !== -1 &&
-        grid[y][x] === grid[y][x - 1]
-      ) {
+      if (grid[y][x] !== -1 && grid[y][x] === grid[y][x - 1]) {
         count++;
       } else {
         if (count >= 3) {
-          for (let k = 0; k < count; k++)
-            toRemove[y][x - 1 - k] = true;
+          for (let k = 0; k < count; k++) {
+            toRemove[y][x - k - 1] = true;
+          }
         }
         count = 1;
       }
     }
     if (count >= 3) {
-      for (let k = 0; k < count; k++)
-        toRemove[y][size - 1 - k] = true;
+      for (let k = 0; k < count; k++) {
+        toRemove[y][size - k - 1] = true;
+      }
     }
   }
 
-  // Vertical (coloane)
+  // Vertical
   for (let x = 0; x < size; x++) {
     let count = 1;
     for (let y = 1; y < size; y++) {
-      if (
-        grid[y][x] !== -1 &&
-        grid[y][x] === grid[y - 1][x]
-      ) {
+      if (grid[y][x] !== -1 && grid[y][x] === grid[y - 1][x]) {
         count++;
       } else {
         if (count >= 3) {
-          for (let k = 0; k < count; k++)
-            toRemove[y - 1 - k][x] = true;
+          for (let k = 0; k < count; k++) {
+            toRemove[y - k - 1][x] = true;
+          }
         }
         count = 1;
       }
     }
     if (count >= 3) {
-      for (let k = 0; k < count; k++)
-        toRemove[size - 1 - k][x] = true;
+      for (let k = 0; k < count; k++) {
+        toRemove[size - k - 1][x] = true;
+      }
     }
   }
 
-  // Returnăm lista de coordonate de eliminat
   return toRemove;
 }
 
-// Elimină piesele marcate și returnează câte au fost eliminate
 function removeMatches(matches) {
   let removed = 0;
   for (let y = 0; y < size; y++) {
@@ -107,7 +106,6 @@ function removeMatches(matches) {
   return removed;
 }
 
-// Fă piesele să cadă și adaugă piese noi
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
@@ -117,14 +115,12 @@ function collapseGrid() {
         pointer--;
       }
     }
-    // Completează cu piese noi
     for (let y = pointer; y >= 0; y--) {
       grid[y][x] = Math.floor(Math.random() * colors.length);
     }
   }
 }
 
-// Handler click pe canvas
 canvas.addEventListener('click', function(e) {
   const x = Math.floor(e.offsetX / tileSize);
   const y = Math.floor(e.offsetY / tileSize);
@@ -139,10 +135,9 @@ canvas.addEventListener('click', function(e) {
       selected = null;
       drawGrid();
 
-      // Detectăm și eliminăm match-uri
       setTimeout(function() {
         processMatches();
-      }, 200); // scurt delay pentru vizualizare swap
+      }, 200);
     } else {
       selected = {x, y};
       drawGrid();
@@ -153,21 +148,14 @@ canvas.addEventListener('click', function(e) {
   }
 });
 
-function isAdjacent(x1, y1, x2, y2) {
-  return (
-    (Math.abs(x1 - x2) === 1 && y1 === y2) ||
-    (Math.abs(y1 - y2) === 1 && x1 === x2)
-  );
-}
-
-// Procesează eliminarea și căderea pieselor
 function processMatches() {
   let matches = detectMatches();
   let found = false;
-  for (let y = 0; y < size; y++)
-    for (let x = 0; x < size; x++)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
       if (matches[y][x]) found = true;
-
+    }
+  }
   if (found) {
     removeMatches(matches);
     drawGrid();
@@ -175,7 +163,7 @@ function processMatches() {
       collapseGrid();
       drawGrid();
       setTimeout(function() {
-        processMatches(); // recursiv, în caz că apar match-uri noi!
+        processMatches();
       }, 200);
     }, 200);
   }
