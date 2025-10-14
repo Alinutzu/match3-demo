@@ -22,7 +22,6 @@ function drawGrid() {
       ctx.fillStyle = colors[grid[y][x]];
       ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
 
-      // Highlight piesa selectată
       if (selected && selected.x === x && selected.y === y) {
         ctx.strokeStyle = "#000";
         ctx.lineWidth = 3;
@@ -39,12 +38,10 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-canvas.addEventListener('mousedown', function(e) {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const x = Math.floor(mx / tileSize);
-  const y = Math.floor(my / tileSize);
+// Folosește offsetX și offsetY pentru coordonate corecte
+canvas.addEventListener('click', function(e) {
+  const x = Math.floor(e.offsetX / tileSize);
+  const y = Math.floor(e.offsetY / tileSize);
 
   if (x < 0 || x >= size || y < 0 || y >= size) return;
 
