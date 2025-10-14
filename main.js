@@ -42,7 +42,7 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-// Detectează match-uri și returnează coordonate de eliminat
+// Detectează match-uri și returnează matrice de eliminat
 function detectMatches() {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
 
@@ -55,7 +55,7 @@ function detectMatches() {
       } else {
         if (count >= 3) {
           for (let k = 0; k < count; k++) {
-            toRemove[y][x - k - 1] = true;
+            toRemove[y][x - k - 1] = true; // corect!
           }
         }
         count = 1;
@@ -77,7 +77,7 @@ function detectMatches() {
       } else {
         if (count >= 3) {
           for (let k = 0; k < count; k++) {
-            toRemove[y - k - 1][x] = true;
+            toRemove[y - k - 1][x] = true; // corect!
           }
         }
         count = 1;
