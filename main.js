@@ -2,38 +2,51 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const size = 8;
 const tileSize = 40;
-// 0-4 = piese normale, 5 = bombă linie, 6 = bombă coloană, 7 = piatră
-const emojis = ['🔵','🟠','🟢','🟣','🔴','💥','💣','🧱'];
+const baseEmojis = ['🔵','🟠','🟢','🟣','🔴','🟡','🟤'];
+// 0-5 = piese normale, 6 = bombă linie, 7 = bombă coloană, 8 = piatră
+let emojis = baseEmojis.slice(0,5).concat(['💥','💣','⬛']);
+
+const levels = [
+  { target: 300,   moves: 15, obstacles: 3, colors: 5, text: "Obține 300 puncte!" },
+  { target: 500,   moves: 20, obstacles: 5, colors: 5, text: "Obține 500 puncte!" },
+  { target: 800,   moves: 25, obstacles: 7, colors: 6, text: "Obține 800 puncte!" },
+  { target: 1200,  moves: 30, obstacles: 10, colors: 7, text: "Obține 1200 puncte!" }
+];
+
+let currentLevel = 0;
 let grid = Array(size).fill().map(() => Array(size).fill(0));
 let selected = null;
 let score = 0;
-let moves = 20;
+let moves = levels[currentLevel].moves;
 let gameOver = false;
-const obiectiv = 500;
-let highscore = Number(localStorage.getItem("match3-highscore")) || 0;
 let fadeMap = Array(size).fill().map(() => Array(size).fill(1));
+let highscore = Number(localStorage.getItem("match3-highscore")) || 0;
 
 const swapSound = document.getElementById('swapSound');
 const matchSound = document.getElementById('matchSound');
 const powerSound = document.getElementById('powerSound');
 
 function randomNormalPiece() {
-  return Math.floor(Math.random() * 5); // 0-4
+  return Math.floor(Math.random() * levels[currentLevel].colors); // 0...colors-1
 }
 
-// Inițializează grila cu piese și câteva pietre
 function initGrid() {
+  emojis = baseEmojis.slice(0,levels[currentLevel].colors).concat(['💥','💣','⬛']);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       grid[y][x] = randomNormalPiece();
       fadeMap[y][x] = 1;
     }
   }
-  // Adaugă 5 pietre random
-  for (let i=0; i<5; i++) {
+  // Adaugă pietre random
+  let placed = 0;
+  while (placed < levels[currentLevel].obstacles) {
     let x = Math.floor(Math.random()*size);
     let y = Math.floor(Math.random()*size);
-    grid[y][x] = 7; // piatră
+    if (grid[y][x] < levels[currentLevel].colors) {
+      grid[y][x] = emojis.length-1; // indexul pentru piatră
+      placed++;
+    }
   }
 }
 
@@ -45,9 +58,15 @@ function drawGrid() {
         ctx.fillStyle = "#fff";
         ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
       } else {
+        // fundal gri pentru piatră
+        if (grid[y][x] === emojis.length-1) {
+          ctx.fillStyle = "#e0e0e0";
+          ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
+        } else {
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
+        }
         ctx.globalAlpha = fadeMap[y][x];
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
         ctx.font = "32px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -64,7 +83,8 @@ function drawGrid() {
   document.getElementById('score').innerText = "Scor: " + score;
   document.getElementById('moves').innerText = "Mutări rămase: " + moves;
   document.getElementById('highscore').innerText = "Highscore: " + highscore;
-  document.getElementById('target').innerText = `Obiectiv: ${obiectiv} puncte`;
+  document.getElementById('target').innerText = levels[currentLevel].text;
+  document.getElementById('level').innerText = `Nivel: ${currentLevel+1}`;
 
   if (gameOver) {
     ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -72,8 +92,10 @@ function drawGrid() {
     ctx.font = "26px Arial";
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
-    if (score >= obiectiv) {
-      ctx.fillText("Ai câștigat! 🎉", canvas.width/2, canvas.height/2 + 10);
+    if (score >= levels[currentLevel].target) {
+      ctx.fillText("Nivel trecut! 🎉", canvas.width/2, canvas.height/2 + 10);
+      document.getElementById('nextLevel').style.display = 
+        currentLevel < levels.length-1 ? "inline-block" : "none";
     } else {
       ctx.fillText("Ai pierdut! 😢", canvas.width/2, canvas.height/2 + 10);
     }
@@ -93,7 +115,6 @@ function isAdjacent(x1, y1, x2, y2) {
   );
 }
 
-// detectMatches returnează: matrice de piese de eliminat + posibile power-up-uri
 function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
   let powerups = [];
@@ -102,8 +123,10 @@ function detectMatches(testGrid = grid) {
     let count = 1;
     for (let x = 1; x < size; x++) {
       if (
-        testGrid[y][x] !== -1 && testGrid[y][x] !== 7 && // să nu fie piatră
-        testGrid[y][x] === testGrid[y][x - 1]
+        testGrid[y][x] !== -1 &&
+        testGrid[y][x] !== emojis.length-1 && // nu piatră
+        testGrid[y][x] === testGrid[y][x - 1] &&
+        testGrid[y][x-1] !== emojis.length-1
       ) {
         count++;
       } else {
@@ -111,9 +134,8 @@ function detectMatches(testGrid = grid) {
           for (let k = 0; k < count; k++) {
             toRemove[y][x - k - 1] = true;
           }
-          // Power-up: bombă de linie (match de 4 sau 5)
-          if (count === 4) powerups.push({y, x: x-2, type: 5});
-          if (count >=5) powerups.push({y, x: x-3, type: 6});
+          if (count === 4) powerups.push({y, x: x-2, type: emojis.length-3});
+          if (count >=5) powerups.push({y, x: x-3, type: emojis.length-2});
         }
         count = 1;
       }
@@ -122,8 +144,8 @@ function detectMatches(testGrid = grid) {
       for (let k = 0; k < count; k++) {
         toRemove[y][size - k - 1] = true;
       }
-      if (count === 4) powerups.push({y, x: size-2, type: 5});
-      if (count >=5) powerups.push({y, x: size-3, type: 6});
+      if (count === 4) powerups.push({y, x: size-2, type: emojis.length-3});
+      if (count >=5) powerups.push({y, x: size-3, type: emojis.length-2});
     }
   }
   // Vertical
@@ -131,8 +153,10 @@ function detectMatches(testGrid = grid) {
     let count = 1;
     for (let y = 1; y < size; y++) {
       if (
-        testGrid[y][x] !== -1 && testGrid[y][x] !== 7 &&
-        testGrid[y][x] === testGrid[y-1][x]
+        testGrid[y][x] !== -1 &&
+        testGrid[y][x] !== emojis.length-1 &&
+        testGrid[y][x] === testGrid[y-1][x] &&
+        testGrid[y-1][x] !== emojis.length-1
       ) {
         count++;
       } else {
@@ -140,9 +164,8 @@ function detectMatches(testGrid = grid) {
           for (let k = 0; k < count; k++) {
             toRemove[y - k - 1][x] = true;
           }
-          // Power-up: bombă de linie/coloană
-          if (count === 4) powerups.push({y: y-2, x, type: 5});
-          if (count >= 5) powerups.push({y: y-3, x, type: 6});
+          if (count === 4) powerups.push({y: y-2, x, type: emojis.length-3});
+          if (count >= 5) powerups.push({y: y-3, x, type: emojis.length-2});
         }
         count = 1;
       }
@@ -151,8 +174,8 @@ function detectMatches(testGrid = grid) {
       for (let k = 0; k < count; k++) {
         toRemove[size - k - 1][x] = true;
       }
-      if (count === 4) powerups.push({y: size-2, x, type: 5});
-      if (count >= 5) powerups.push({y: size-3, x, type: 6});
+      if (count === 4) powerups.push({y: size-2, x, type: emojis.length-3});
+      if (count >= 5) powerups.push({y: size-3, x, type: emojis.length-2});
     }
   }
   return {toRemove, powerups};
@@ -190,18 +213,16 @@ function animateRemoval(matches, callback) {
   animStep();
 }
 
-// Eliminare piese și generare power-up-uri (bombă)
 function removeMatches(matches, powerups) {
   let removed = 0;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (matches[y][x]) {
+      if (matches[y][x] && grid[y][x] !== emojis.length-1) { // nu elimina piatră
         grid[y][x] = -1;
         removed++;
       }
     }
   }
-  // Generează power-up-uri pe locul potrivit
   for (const p of powerups) {
     grid[p.y][p.x] = p.type;
   }
@@ -209,7 +230,6 @@ function removeMatches(matches, powerups) {
   return removed > 0;
 }
 
-// Cădere piese + generare piese noi
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
@@ -232,12 +252,10 @@ canvas.addEventListener('click', function(e) {
   const y = Math.floor(e.offsetY / tileSize);
 
   if (x < 0 || x >= size || y < 0 || y >= size) return;
+  if (grid[y][x] === emojis.length-1) return; // piatră
 
-  // Obstacol/piatră nu se poate selecta
-  if (grid[y][x] === 7) return;
-
-  // Power-up: click pe bombă
-  if (grid[y][x] === 5) { // bombă linie
+  // Power-ups
+  if (grid[y][x] === emojis.length-3) { // bombă linie
     grid[y].fill(-1);
     score += size * 10;
     powerSound.play();
@@ -251,7 +269,7 @@ canvas.addEventListener('click', function(e) {
     }, 200);
     return;
   }
-  if (grid[y][x] === 6) { // bombă coloană
+  if (grid[y][x] === emojis.length-2) { // bombă coloană
     for (let yy=0; yy<size; yy++) grid[yy][x] = -1;
     score += size * 10;
     powerSound.play();
@@ -268,8 +286,7 @@ canvas.addEventListener('click', function(e) {
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
-      // Swap temporar și verificăm dacă rezultă match
-      if (grid[x][y] === 7 || grid[selected.y][selected.x] === 7) return; // nu poți muta pietre
+      if (grid[y][x] === emojis.length-1 || grid[selected.y][selected.x] === emojis.length-1) return;
 
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
@@ -289,7 +306,6 @@ canvas.addEventListener('click', function(e) {
           processMatches();
         }, 200);
       } else {
-        // Nu e match, swap-ul se anulează
         setTimeout(function() {
           let temp2 = grid[selected.y][selected.x];
           grid[selected.y][selected.x] = grid[y][x];
@@ -328,12 +344,26 @@ function processMatches() {
 
 document.getElementById('restart').addEventListener('click', function() {
   score = 0;
-  moves = 20;
+  moves = levels[currentLevel].moves;
   gameOver = false;
   selected = null;
+  document.getElementById('nextLevel').style.display = "none";
   initGrid();
   drawGrid();
 });
 
+document.getElementById('nextLevel').addEventListener('click', function() {
+  currentLevel++;
+  if (currentLevel >= levels.length) currentLevel = levels.length-1;
+  score = 0;
+  moves = levels[currentLevel].moves;
+  gameOver = false;
+  selected = null;
+  document.getElementById('nextLevel').style.display = "none";
+  initGrid();
+  drawGrid();
+});
+
+// Start joc
 initGrid();
 drawGrid();
