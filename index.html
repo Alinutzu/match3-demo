@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Match-3 Demo</title>
+  <title>Match-3 Ingredients & Obstacles</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Match-3 Demo</h1>
+  <h1>Match-3 Advanced</h1>
   <div id="level" style="font-size:20px; margin-bottom:6px;">Nivel: 1</div>
-  <div id="mission" style="font-size:18px; margin-bottom:6px;">Obiectiv: Elimină 10 🔵</div>
+  <div id="mission" style="font-size:18px; margin-bottom:6px;">Obiectiv: Adu 2 🍎 jos & Elimină 10 buline albastre</div>
   <div id="score" style="font-size:22px; margin-bottom:4px;">Scor: 0</div>
   <div id="stars" style="font-size:22px; margin-bottom:4px;">Stele: ⭐⭐⭐</div>
   <div id="highscore" style="font-size:18px; margin-bottom:4px;">Highscore: 0</div>
@@ -16,15 +16,15 @@
   <button id="restart" style="margin-bottom:10px;">Restart nivel</button>
   <button id="okLevel" style="margin-bottom:10px; display:none;">OK</button>
   <canvas id="game" width="320" height="320"></canvas>
-  
-  <!-- Integrare sunete locale -->
+
+  <!-- Sunete integrate LOCAL -->
   <audio id="swapSound" src="sounds/swap.mp3"></audio>
   <audio id="matchSound" src="sounds/match.mp3"></audio>
   <audio id="popSound" src="sounds/pop.mp3"></audio>
   <audio id="explosionSound" src="sounds/explosion.mp3"></audio>
   <audio id="winSound" src="sounds/win.mp3"></audio>
   <audio id="failSound" src="sounds/fail.mp3"></audio>
-  
+
   <script src="main.js"></script>
 </body>
 </html>
