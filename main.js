@@ -453,23 +453,28 @@ function processCascade() {
 // PATCHED collapseGrid
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
-    let pointer = size - 1;
+    // Colectăm bulinele normale/ingrediente din coloană
+    let stack = [];
     for (let y = size - 1; y >= 0; y--) {
       if (grid[y][x] >= 0 && grid[y][x] <= 6) {
-        grid[pointer][x] = grid[y][x];
-        if (pointer !== y) grid[y][x] = -1;
-        pointer--;
-      } else if (grid[y][x] > 6) {
-        // Piesele speciale rămân pe loc!
-        pointer--;
+        stack.push(grid[y][x]);
       }
     }
-    for (let y = pointer; y >= 0; y--) {
-      if (grid[y][x] === -1) grid[y][x] = randomNormalPiece();
+    // Refacem coloana de jos în sus:
+    for (let y = size - 1; y >= 0; y--) {
+      // Dacă e piesă specială (portal, lock, bombă), nu o mutăm!
+      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
+        continue;
+      }
+      // Pune bulină din stack sau generează una nouă
+      if (stack.length > 0) {
+        grid[y][x] = stack.shift();
+      } else {
+        grid[y][x] = randomNormalPiece();
+      }
     }
   }
-  // Portalurile, locks, bombs etc. rămân pe poziții (nu se mută)
-  // Teleportare portaluri
+  // Teleportare portaluri ca înainte
   for (let i = 0; i < portalPairs.length; i++) {
     let [a, b] = portalPairs[i];
     if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
