@@ -266,6 +266,40 @@ function getStars() {
   return ok;
 }
 
+function isAdjacent(x1, y1, x2, y2) {
+  return (
+    (Math.abs(x1 - x2) === 1 && y1 === y2) ||
+    (Math.abs(y1 - y2) === 1 && x1 === x2)
+  );
+}
+
+function showHint() {
+  hintMove = findAnyValidMove();
+  drawGrid();
+}
+
+function findAnyValidMove() {
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      if (grid[y][x] === 11 || grid[y][x] === 12) continue;
+      // Dreapta
+      if (x < size-1 && grid[y][x+1] >= 0 && grid[y][x+1] !== 11 && grid[y][x+1] !== 12) {
+        swap(grid, x, y, x+1, y);
+        let {toRemove} = detectMatches(grid);
+        swap(grid, x, y, x+1, y);
+        if (hasAnyMatch(toRemove)) return {x1:x, y1:y, x2:x+1, y2:y};
+      }
+      // Jos
+      if (y < size-1 && grid[y+1][x] >= 0 && grid[y+1][x] !== 11 && grid[y+1][x] !== 12) {
+        swap(grid, x, y, x, y+1);
+        let {toRemove} = detectMatches(grid);
+        swap(grid, x, y, x, y+1);
+        if (hasAnyMatch(toRemove)) return {x1:x, y1:y, x2:x, y2:y+1};
+      }
+    }
+  return null;
+}
+
 function showEndModal() {
   document.getElementById('endModal').style.display = 'block';
   let msg = '';
