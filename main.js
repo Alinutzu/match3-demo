@@ -1,7 +1,7 @@
 // CONFIG
 const NUM_LEVELS = 10;
 const INITIAL_LIVES = 3;
-const LIFE_REGEN_MINUTES = 1;
+const LIFE_REGEN_MINUTES = 1; // Seteaza pe 1 pentru testare
 const LEVEL_TIME_LIMITS = [60, 80, 100, 120, 140, 160, 180, 200, 220, 240];
 const size = 8, tileSize = 40;
 const baseEmojis = [
@@ -17,12 +17,12 @@ const popSound = document.getElementById('popSound');
 const explosionSound = document.getElementById('explosionSound');
 const winSound = document.getElementById('winSound');
 const failSound = document.getElementById('failSound');
-function playSwap() { swapSound.currentTime = 0; swapSound.play(); }
-function playMatch() { matchSound.currentTime = 0; matchSound.play(); }
-function playPop() { popSound.currentTime = 0; popSound.play(); }
-function playExplosion() { explosionSound.currentTime = 0; explosionSound.play(); }
-function playWin() { winSound.currentTime = 0; winSound.play(); }
-function playFail() { failSound.currentTime = 0; failSound.play(); }
+function playSwap() { if(swapSound) {swapSound.currentTime = 0; swapSound.play();} }
+function playMatch() { if(matchSound) {matchSound.currentTime = 0; matchSound.play();} }
+function playPop() { if(popSound) {popSound.currentTime = 0; popSound.play();} }
+function playExplosion() { if(explosionSound) {explosionSound.currentTime = 0; explosionSound.play();} }
+function playWin() { if(winSound) {winSound.currentTime = 0; winSound.play();} }
+function playFail() { if(failSound) {failSound.currentTime = 0; failSound.play();} }
 
 // MAP & PROGRESS
 let levelData = [];
@@ -95,7 +95,7 @@ function updateLifeTimer() {
   let ms = Math.max(0, nextLife-Date.now());
   let mm = Math.floor(ms/60000), ss = Math.floor((ms%60000)/1000);
   document.getElementById('lifeTimer').innerText = `${mm.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
-  if(ms===0){
+  if(lives < INITIAL_LIVES && ms === 0){
     lives++;
     localStorage.setItem('match3_lives',lives);
     lastLifeLoss = Date.now();
@@ -108,10 +108,15 @@ function updateLifeTimer() {
 
 // LEVEL START
 function startLevel(lvl){
+  if(lives <= 0) {
+    alert("Nu mai ai vieți! Așteaptă să se regenereze.");
+    renderMapScreen();
+    return;
+  }
   currentLevel = lvl;
   document.getElementById('mapScreen').style.display = 'none';
   document.getElementById('gameScreen').style.display = 'block';
-  lives--;
+  lives = Math.max(0, lives - 1);
   localStorage.setItem('match3_lives',lives);
   lastLifeLoss = Date.now();
   localStorage.setItem('match3_lastLifeLoss',lastLifeLoss);
@@ -144,15 +149,16 @@ function startLevel(lvl){
   document.getElementById('timer').style.display = 'block';
   document.getElementById('timeLeft').innerText = `${timeLeft}s`;
   timerInterval && clearInterval(timerInterval);
-timerInterval = setInterval(()=>{
-  timeLeft--;
-  document.getElementById('timeLeft').innerText = `${timeLeft}s`;
-  if(timeLeft <= 0 && !gameOver){
-    gameOver = true;
-    clearInterval(timerInterval); // <-- adaugă această linie!
-    drawGrid();
-  }
-},1000);
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+    if(timeLeft<=0 && !gameOver){
+      gameOver = true;
+      clearInterval(timerInterval);
+      drawGrid();
+    }
+  },1000);
+}
 
 // INIT GRID + BONUS
 function updateLevelParameters() {
@@ -249,9 +255,10 @@ function drawGrid() {
         ctx.strokeRect(x * tileSize + 2, y * tileSize + 2, tileSize - 6, tileSize - 6);
       }
     }
+  let hsElement = document.getElementById('highscore');
+  if (hsElement) hsElement.innerText = "Highscore: " + highscore;
   document.getElementById('score').innerText = "Scor: " + score;
   document.getElementById('moves').innerText = "Mutări rămase: " + moves;
-  document.getElementById('highscore').innerText = "Highscore: " + highscore;
   document.getElementById('levelTitle').innerText = `Nivel ${currentLevel}`;
   let objtxt = '';
   objectives.forEach(o=>{
@@ -288,7 +295,7 @@ function drawGrid() {
     if (score > highscore) {
       highscore = score;
       localStorage.setItem("match3-highscore", highscore);
-      document.getElementById('highscore').innerText = "Highscore: " + highscore;
+      if (hsElement) hsElement.innerText = "Highscore: " + highscore;
     }
   } else {
     document.getElementById('okLevel').style.display = "none";
@@ -417,7 +424,6 @@ function removeMatches(matches, powerups) {
   return removed > 0;
 }
 
-// Cascade automatic
 function processCascade() {
   let {toRemove,powerups} = detectMatches();
   if (hasAnyMatch(toRemove)) {
@@ -444,11 +450,10 @@ function processCascade() {
   }
 }
 
-// ** PATCHED collapseGrid **
+// PATCHED collapseGrid
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
-    // Mută DOAR bulinele normale/ingredientul (0-6) în jos, piesele speciale rămân pe loc
     for (let y = size - 1; y >= 0; y--) {
       if (grid[y][x] >= 0 && grid[y][x] <= 6) {
         grid[pointer][x] = grid[y][x];
@@ -459,7 +464,6 @@ function collapseGrid() {
         pointer--;
       }
     }
-    // Umple golurile de sus cu buline noi, dar nu suprascrie piesele speciale!
     for (let y = pointer; y >= 0; y--) {
       if (grid[y][x] === -1) grid[y][x] = randomNormalPiece();
     }
@@ -481,6 +485,7 @@ function collapseGrid() {
   }
 }
 
+// PATCHED checkIngredientsDelivered
 function checkIngredientsDelivered() {
   for (let x = 0; x < size; x++) {
     let y = size - 1;
@@ -489,10 +494,9 @@ function checkIngredientsDelivered() {
       grid[y][x] = randomNormalPiece();
       playExplosion();
       playPop();
-      // Adaugă un nou ingredient sus, dacă mai e nevoie
+      // Adaugă un nou ingredient sus dacă mai e nevoie
       if (ingredientDelivered < ingredientCount) {
         let found = false;
-        // Pune un măr într-o coloană random sus, unde nu e deja alt ingredient/bombă/portal/lock
         for (let tryCol = 0; tryCol < size && !found; tryCol++) {
           let col = Math.floor(Math.random() * size);
           if (grid[0][col] < 6) {
