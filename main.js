@@ -103,7 +103,7 @@ function updateLifeTimer() {
     // Doar actualizează viețile, NU schimba ecranul!
     // NU apela renderMapScreen() aici!
 }
-  }else{
+  else{
     lifeRegenTimer = setTimeout(updateLifeTimer, 1000);
   }
 }
