@@ -444,6 +444,7 @@ function processCascade() {
   }
 }
 
+// ** PATCHED collapseGrid **
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
@@ -455,9 +456,8 @@ function collapseGrid() {
         pointer--;
       }
     }
-    // Umple golurile de sus cu buline noi, dar nu suprascrie piesele speciale
+    // Umple golurile de sus cu buline noi, dar nu suprascrie piesele speciale!
     for (let y = pointer; y >= 0; y--) {
-      // Daca pe pozitia respectiva era o piesa speciala, nu o suprascrie!
       if (grid[y][x] === -1) grid[y][x] = randomNormalPiece();
     }
   }
