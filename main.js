@@ -447,24 +447,29 @@ function processCascade() {
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
-    for (let y = size - 1; y >= 0; y--)
-      if (grid[y][x] !== -1) grid[pointer][x] = grid[y][x], pointer--;
-    for (let y = pointer; y >= 0; y--)
-      grid[y][x] = -1;
+    // Mută DOAR buline/ingrediente (0-6) în jos
+    for (let y = size - 1; y >= 0; y--) {
+      if (grid[y][x] >= 0 && grid[y][x] <= 6) {
+        grid[pointer][x] = grid[y][x];
+        if (pointer !== y) grid[y][x] = -1;
+        pointer--;
+      }
+    }
+    // Umple golurile de sus cu buline noi
+    for (let y = pointer; y >= 0; y--) {
+      grid[y][x] = randomNormalPiece();
+    }
   }
-  for (let x = 0; x < size; x++)
-    for (let y = 0; y < size; y++)
-      if (grid[y][x] === -1)
-        grid[y][x] = randomNormalPiece();
-  // teleportare
-  for (let i=0; i<portalPairs.length; i++) {
-    let [a,b]=portalPairs[i];
-    if (grid[a[0]][a[1]] < 6) {
+  // Portalurile, locks, bombs, etc. rămân pe poziții (nu se mută)
+  // Teleportare portaluri
+  for (let i = 0; i < portalPairs.length; i++) {
+    let [a, b] = portalPairs[i];
+    if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
       grid[b[0]][b[1]] = grid[a[0]][a[1]];
       grid[a[0]][a[1]] = 11;
       playSwap();
     }
-    if (grid[b[0]][b[1]] < 6) {
+    if (grid[b[0]][b[1]] >= 0 && grid[b[0]][b[1]] <= 6) {
       grid[a[0]][a[1]] = grid[b[0]][b[1]];
       grid[b[0]][b[1]] = 11;
       playSwap();
