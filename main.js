@@ -1,7 +1,7 @@
 // CONFIG
 const NUM_LEVELS = 10;
 const INITIAL_LIVES = 3;
-const LIFE_REGEN_MINUTES = 10;
+const LIFE_REGEN_MINUTES = 1;
 const LEVEL_TIME_LIMITS = [60, 80, 100, 120, 140, 160, 180, 200, 220, 240];
 const size = 8, tileSize = 40;
 const baseEmojis = [
