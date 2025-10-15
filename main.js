@@ -1,8 +1,8 @@
 // CONFIG
-const NUM_LEVELS = 10;
+const MAX_LEVELS = 20; // crește targetul la 20 de niveluri
 const INITIAL_LIVES = 3;
 const LIFE_REGEN_MINUTES = 1; // Seteaza pe 1 pentru testare
-const LEVEL_TIME_LIMITS = [60, 80, 100, 120, 140, 160, 180, 200, 220, 240];
+const LEVEL_TIME_LIMITS = Array.from({length: MAX_LEVELS}, (_, i) => 60 + i * 10); // Timp progresiv
 const size = 8, tileSize = 40;
 const baseEmojis = [
   '🔵','🟠','🟢','🟣','🔴','🟡','🍎','💥','💣','🌈','🍫','🌀','🔒'
@@ -24,9 +24,7 @@ function playExplosion() { if(explosionSound) {explosionSound.currentTime = 0; e
 function playWin() { if(winSound) {winSound.currentTime = 0; winSound.play();} }
 function playFail() { if(failSound) {failSound.currentTime = 0; failSound.play();} }
 
-// MAP & PROGRESS
-let levelData = [];
-let mapProgress = JSON.parse(localStorage.getItem('match3_mapProgress')||'{}');
+// PROGRESS
 let leaderboardData = JSON.parse(localStorage.getItem('match3_leaderboard')||'[]');
 let lives = Number(localStorage.getItem('match3_lives')) || INITIAL_LIVES;
 let lastLifeLoss = Number(localStorage.getItem('match3_lastLifeLoss')) || Date.now();
@@ -57,34 +55,30 @@ let timeLeft = 60;
 let objectives = [];
 let bonusPowerups = 0;
 
-// LEVEL OBJECTIVES
-function setupLevels(){
-  levelData = [];
-  for(let i=1;i<=NUM_LEVELS;i++){
-    let obj = [];
-    obj.push({type:'score', target: 250+100*i});
-    obj.push({type:'color', color: i%6, target: 8+2*i});
-    if(i%2===0) obj.push({type:'ingredient', count: 2+Math.floor(i/2)});
-    levelData.push(obj);
-  }
+// LEVEL GENERATION (dificultate progresivă)
+function generateLevelData(level){
+  return [
+    {type:'score', target: 200 + level * 50},
+    {type:'color', color: level % 6, target: 8 + level * 2},
+    {type:'ingredient', count: Math.min(1 + Math.floor(level/2), 5)}
+  ];
 }
-setupLevels();
 
-// MAP SCREEN
-function renderMapScreen() {
-  document.getElementById('mapScreen').style.display = 'block';
-  document.getElementById('gameScreen').style.display = 'none';
-  document.getElementById('lives').innerHTML = `Vieți: ${'❤️'.repeat(Math.max(0, lives))}${'🤍'.repeat(Math.max(0, INITIAL_LIVES-lives))} (reîncărcare: <span id="lifeTimer">00:00</span>)`;
-  let html = '';
-  for(let i=1;i<=NUM_LEVELS;i++){
-    let ok = mapProgress[i]?.win;
-    html+=`<button onclick="startLevel(${i})" style="margin:3px;${ok?'background:#b2ffb2':''}" ${lives>0?'':'disabled'}>Nivel ${i}${ok?' ⭐':''}</button>`;
-  }
-  document.getElementById('levelButtons').innerHTML=html;
-  let tb = '<tr><th>Level</th><th>Score</th><th>Stars</th></tr>';
-  leaderboardData.slice(0,10).forEach(row=>tb+=`<tr><td>${row.level}</td><td>${row.score}</td><td>${'⭐'.repeat(row.stars)}</td></tr>`);
-  document.getElementById('leaderboard').innerHTML=tb;
-  updateLifeTimer();
+// UI SCREEN
+function renderGameScreen() {
+  document.getElementById('gameScreen').style.display = 'block';
+  document.getElementById('okLevel').style.display = "none";
+  document.getElementById('levelTitle').innerText = `Nivel ${currentLevel}`;
+  let objtxt = '';
+  objectives.forEach(o=>{
+    if(o.type==='score') objtxt+=`Scor: ${o.target} `;
+    if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} `;
+    if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos `;
+  });
+  document.getElementById('objectives').innerText = objtxt.trim();
+  document.getElementById('timer').style.display = 'block';
+  document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+  drawGrid();
 }
 function updateLifeTimer() {
   if(lives>=INITIAL_LIVES){
@@ -100,54 +94,38 @@ function updateLifeTimer() {
     localStorage.setItem('match3_lives',lives);
     lastLifeLoss = Date.now();
     localStorage.setItem('match3_lastLifeLoss',lastLifeLoss);
-    renderMapScreen();
+    updateLifeTimer();
   }else{
     lifeRegenTimer = setTimeout(updateLifeTimer, 1000);
   }
 }
 
-// LEVEL START
+// LEVEL START (automat, fără hartă)
 function startLevel(lvl){
   if(lives <= 0) {
     alert("Nu mai ai vieți! Așteaptă să se regenereze.");
-    renderMapScreen();
     return;
   }
   currentLevel = lvl;
-  document.getElementById('mapScreen').style.display = 'none';
-  document.getElementById('gameScreen').style.display = 'block';
   lives = Math.max(0, lives - 1);
   localStorage.setItem('match3_lives',lives);
   lastLifeLoss = Date.now();
   localStorage.setItem('match3_lastLifeLoss',lastLifeLoss);
-  objectives = levelData[lvl-1];
-  missionColor = objectives[1]?.color ?? 0;
-  missionColorTarget = objectives[1]?.target ?? 10;
-  ingredientCount = objectives[2]?.count ?? 0;
+  objectives = generateLevelData(currentLevel);
+  missionColor = objectives[1].color;
+  missionColorTarget = objectives[1].target;
+  ingredientCount = objectives[2].count;
   ingredientType = 6;
   ingredientDelivered = 0;
   missionColorProgress = 0;
   score = 0;
-  moves = 20 + Math.floor(lvl*1.5);
-  timer = LEVEL_TIME_LIMITS[lvl-1] ?? 60;
+  moves = 15 + 5 * (currentLevel - 1);
+  timer = LEVEL_TIME_LIMITS[currentLevel-1] ?? 60;
   timeLeft = timer;
   bonusPowerups = 1 + Math.floor(Math.random()*2);
   gameOver = false;
   selected = null;
-  document.getElementById('okLevel').style.display = "none";
-  document.getElementById('levelTitle').innerText = `Nivel ${lvl}`;
-  let objtxt = '';
-  objectives.forEach(o=>{
-    if(o.type==='score') objtxt+=`Scor: ${o.target} `;
-    if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} `;
-    if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos `;
-  });
-  document.getElementById('objectives').innerText = objtxt.trim();
-  updateLevelParameters();
-  initGrid();
-  drawGrid();
-  document.getElementById('timer').style.display = 'block';
-  document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+  renderGameScreen();
   timerInterval && clearInterval(timerInterval);
   timerInterval = setInterval(()=>{
     timeLeft--;
@@ -158,23 +136,13 @@ function startLevel(lvl){
       drawGrid();
     }
   },1000);
+  updateLifeTimer();
 }
 
 // INIT GRID + BONUS
-function updateLevelParameters() {
-  moves = 15 + 5 * (currentLevel - 1);
-  ingredientCount = objectives[2]?.count ?? 0;
-  missionColor = objectives[1]?.color ?? 0;
-  missionColorTarget = objectives[1]?.target ?? 10;
-  missionColorProgress = 0;
-  ingredientType = 6;
-  ingredientDelivered = 0;
-}
-
 function randomNormalPiece() {
   return Math.floor(Math.random() * 6);
 }
-
 function initGrid() {
   grid = Array(size).fill().map(() => Array(size).fill(0));
   fadeMap = Array(size).fill().map(() => Array(size).fill(1));
@@ -280,16 +248,23 @@ function drawGrid() {
       playWin();
       document.getElementById('okLevel').style.display = "inline-block";
       leaderboardData.unshift({level:currentLevel,score:score,stars:getStars().length});
-      leaderboardData=leaderboardData.slice(0,20);
+      leaderboardData=leaderboardData.slice(0,50);
       localStorage.setItem('match3_leaderboard',JSON.stringify(leaderboardData));
-      mapProgress[currentLevel]={win:true,stars:getStars().length};
-      localStorage.setItem('match3_mapProgress',JSON.stringify(mapProgress));
+      if (currentLevel < MAX_LEVELS) {
+        setTimeout(()=>{
+          currentLevel++;
+          startLevel(currentLevel);
+        }, 1200);
+      } else {
+        setTimeout(()=>{
+          alert("Felicitări! Ai terminat toate nivelurile.");
+          document.getElementById('okLevel').style.display = "inline-block";
+        }, 1200);
+      }
     } else {
       ctx.fillText("Ai pierdut! 😢", canvas.width/2, canvas.height/2 + 10);
       playFail();
-      document.getElementById('okLevel').style.display = "none";
-      mapProgress[currentLevel]={win:false,stars:0};
-      localStorage.setItem('match3_mapProgress',JSON.stringify(mapProgress));
+      document.getElementById('okLevel').style.display = "inline-block";
     }
     ctx.textAlign = "start";
     if (score > highscore) {
@@ -450,23 +425,18 @@ function processCascade() {
   }
 }
 
-// PATCHED collapseGrid
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
-    // Colectăm bulinele normale/ingrediente din coloană
     let stack = [];
     for (let y = size - 1; y >= 0; y--) {
       if (grid[y][x] >= 0 && grid[y][x] <= 6) {
         stack.push(grid[y][x]);
       }
     }
-    // Refacem coloana de jos în sus:
     for (let y = size - 1; y >= 0; y--) {
-      // Dacă e piesă specială (portal, lock, bombă), nu o mutăm!
       if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
         continue;
       }
-      // Pune bulină din stack sau generează una nouă
       if (stack.length > 0) {
         grid[y][x] = stack.shift();
       } else {
@@ -474,7 +444,6 @@ function collapseGrid() {
       }
     }
   }
-  // Teleportare portaluri ca înainte
   for (let i = 0; i < portalPairs.length; i++) {
     let [a, b] = portalPairs[i];
     if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
@@ -490,7 +459,6 @@ function collapseGrid() {
   }
 }
 
-// PATCHED checkIngredientsDelivered
 function checkIngredientsDelivered() {
   for (let x = 0; x < size; x++) {
     let y = size - 1;
@@ -499,7 +467,6 @@ function checkIngredientsDelivered() {
       grid[y][x] = randomNormalPiece();
       playExplosion();
       playPop();
-      // Adaugă un nou ingredient sus dacă mai e nevoie
       if (ingredientDelivered < ingredientCount) {
         let found = false;
         for (let tryCol = 0; tryCol < size && !found; tryCol++) {
@@ -675,8 +642,14 @@ document.getElementById('restart').addEventListener('click', function() {
   startLevel(currentLevel);
 });
 document.getElementById('okLevel').addEventListener('click', function() {
-  renderMapScreen();
+  if (gameOver && currentLevel < MAX_LEVELS) {
+    currentLevel++;
+    startLevel(currentLevel);
+  } else {
+    startLevel(1);
+  }
 });
 
 // INIT
-renderMapScreen();
+initGrid();
+startLevel(1);
