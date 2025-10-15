@@ -32,14 +32,14 @@ let moves = 15;
 let gameOver = false;
 let fadeMap = [];
 let highscore = Number(localStorage.getItem("match3-highscore")) || 0;
-let missionColor = 0; // bulină pentru misiune
-let missionColorTarget = 10; // câte buline de eliminat
+let missionColor = 0;
+let missionColorTarget = 10;
 let missionColorProgress = 0;
-let ingredientType = 6; // 🍎 index
+let ingredientType = 6;
 let ingredientCount = 2;
 let ingredientDelivered = 0;
-let portalPairs = []; // perechi de portaluri
-let lockPositions = []; // blocaje încuiate
+let portalPairs = [];
+let lockPositions = [];
 let hintTimeout = null;
 let hintMove = null;
 
@@ -49,20 +49,21 @@ function updateLevelParameters() {
   missionColor = Math.floor(Math.random()*6);
   missionColorTarget = 10 + level * 2;
   missionColorProgress = 0;
-  ingredientType = 6; // 🍎, poți alterna cu 7 pentru 🍒
+  ingredientType = 6; // 🍎
   ingredientDelivered = 0;
 }
 
-// Buline normale
 function randomNormalPiece() {
-  return Math.floor(Math.random() * 6); // 0...5 buline
+  return Math.floor(Math.random() * 6);
 }
 
-// Inițializare grilă cu obstacole, ingrediente, portaluri și blocaje încuiate
 function initGrid() {
   grid = Array(size).fill().map(() => Array(size).fill(0));
   fadeMap = Array(size).fill().map(() => Array(size).fill(1));
-  portalPairs = [];
+  portalPairs = [
+    [ [0,0], [size-1,size-1] ], 
+    [ [0,size-1], [size-1,0] ]
+  ];
   lockPositions = [];
   // buline normale
   for (let y = 0; y < size; y++)
@@ -79,10 +80,6 @@ function initGrid() {
     }
   }
   // portaluri: mereu în pereche
-  portalPairs = [
-    [ [0,0], [size-1,size-1] ], 
-    [ [0,size-1], [size-1,0] ]
-  ];
   for (let i=0; i<portalPairs.length; i++) {
     let [a,b] = portalPairs[i];
     grid[a[0]][a[1]] = 11; // portal 🌀
@@ -95,6 +92,14 @@ function initGrid() {
     if(grid[y][x]<6){
       grid[y][x]=12; // 🔒
       lockPositions.push([y,x]);
+    }
+  }
+  // power-up random bonus
+  for (let i=0;i<Math.min(3,level);i++) {
+    let x = Math.floor(Math.random()*size);
+    let y = Math.floor(Math.random()*size);
+    if(grid[y][x]<6){
+      grid[y][x]=7+Math.floor(Math.random()*3); // 💥,💣,🌈
     }
   }
 }
@@ -197,9 +202,9 @@ function detectMatches(testGrid = grid) {
         if (count >= 3) {
           for (let k = 0; k < count; k++)
             toRemove[y][x - k - 1] = true;
-          if (count === 4) powerups.push({y, x: x-2, type: 7}); // 💥
-          if (count === 5) powerups.push({y, x: x-3, type: 8}); // 💣
-          if (count >= 6) powerups.push({y, x: x-4, type: 9}); // 🌈
+          if (count === 4) powerups.push({y, x: x-2, type: 7});
+          if (count === 5) powerups.push({y, x: x-3, type: 8});
+          if (count >= 6) powerups.push({y, x: x-4, type: 9});
         }
         count = 1;
       }
@@ -279,7 +284,7 @@ function removeMatches(matches, powerups) {
         removed++;
       }
   for (const p of powerups)
-    grid[p.y][p.x] = p.type; // bombă linie/coloană/culoare
+    grid[p.y][p.x] = p.type;
   score += removed * 10;
   missionColorProgress += colorRemoved;
   if (removed) playMatch();
@@ -289,7 +294,6 @@ function removeMatches(matches, powerups) {
 }
 
 function collapseGrid() {
-  // teleportare: dacă piesa cade pe portal, apare în perechea portalului
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
     for (let y = size - 1; y >= 0; y--)
@@ -304,7 +308,6 @@ function collapseGrid() {
   // teleportare
   for (let i=0; i<portalPairs.length; i++) {
     let [a,b]=portalPairs[i];
-    // dacă pe portal a cade o piesă normală, mut-o pe portal b
     if (grid[a[0]][a[1]] < 6) {
       grid[b[0]][b[1]] = grid[a[0]][a[1]];
       grid[a[0]][a[1]] = 11;
@@ -334,7 +337,6 @@ function checkIngredientsDelivered() {
 function unlockLocks(matches) {
   for(const [ly,lx] of lockPositions){
     let unlocked=false;
-    // dacă e match pe o vecinătate
     for(const [dy,dx] of [[0,1],[1,0],[0,-1],[-1,0]]){
       let yy=ly+dy,xx=lx+dx;
       if(yy>=0&&yy<size&&xx>=0&&xx<size){
@@ -357,6 +359,7 @@ function tryPowerCombo(x1,y1,x2,y2){
       grid[y1][i]=-1,grid[i][x2]=-1;
     playExplosion();
     playPop();
+    score += size*size*10;
     return true;
   }
   // bombă culoare + orice bombă
@@ -366,6 +369,7 @@ function tryPowerCombo(x1,y1,x2,y2){
         grid[y][x]=-1;
     playExplosion();
     playPop();
+    score += size*size*20;
     return true;
   }
   // bombă culoare + bombă culoare
@@ -375,9 +379,47 @@ function tryPowerCombo(x1,y1,x2,y2){
         grid[y][x]=-1;
     playExplosion();
     playPop();
+    score += size*size*25;
     return true;
   }
   return false;
+}
+
+// Activare directă power-up (click)
+function activatePowerUp(x, y) {
+  let p = grid[y][x];
+  if (p === 7) { // bombă linie
+    for (let i=0;i<size;i++) grid[y][i] = -1;
+    playExplosion();
+    playPop();
+    score += size*10;
+  }
+  else if (p === 8) { // bombă coloană
+    for (let i=0;i<size;i++) grid[i][x] = -1;
+    playExplosion();
+    playPop();
+    score += size*10;
+  }
+  else if (p === 9) { // bombă culoare
+    let chosen = prompt("Alege culoarea pentru eliminare (0-5):\n" +
+      baseEmojis.slice(0,6).map((e,i)=>i+":"+e).join(" "));
+    chosen = Number(chosen);
+    if (isNaN(chosen) || chosen < 0 || chosen > 5) return;
+    for (let yy=0;yy<size;yy++)
+      for (let xx=0;xx<size;xx++)
+        if (grid[yy][xx] === chosen) grid[yy][xx] = -1;
+    playExplosion();
+    playPop();
+    score += size*size*5;
+  }
+  grid[y][x] = randomNormalPiece();
+  drawGrid();
+  setTimeout(() => {
+    collapseGrid();
+    checkIngredientsDelivered();
+    drawGrid();
+    setTimeout(processMatches, 200);
+  }, 200);
 }
 
 canvas.addEventListener('click', function(e) {
@@ -389,12 +431,20 @@ canvas.addEventListener('click', function(e) {
   const y = Math.floor(e.offsetY / tileSize);
 
   if (x < 0 || x >= size || y < 0 || y >= size) return;
+
+  // activare bombă direct pe click
+  if (grid[y][x] === 7 || grid[y][x] === 8 || grid[y][x] === 9) {
+    activatePowerUp(x, y);
+    moves--;
+    if (moves <= 0) gameOver = true;
+    return;
+  }
+
   // portal și lock nu se mută
   if (grid[y][x] === 11 || grid[y][x] === 12) return;
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
-      // nu se mută portal, lock
       if (grid[y][x] === 11 || grid[y][x] === 12 || grid[selected.y][selected.x] === 11 || grid[selected.y][selected.x] === 12) return;
 
       // combinație power-up-uri
@@ -453,7 +503,6 @@ function processMatches() {
       }, 200);
     });
   } else {
-    // Reîmprospătare grilă dacă nu există mutări posibile
     if (!findAnyValidMove()) {
       alert("Nu există mutări posibile! Grila se reface.");
       playFail();
