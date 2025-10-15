@@ -312,6 +312,9 @@ function showEndModal() {
 // ... [as in your repo, unchanged]
 
 // Event listeners
+canvas.addEventListener('click', function(e) {
+  console.log("Canvas click", gameOver, timeLeft);
+  if (gameOver || timeLeft <= 0) return;
 document.getElementById('restart').addEventListener('click', function() {
   startLevel(currentLevel);
 });
