@@ -561,7 +561,6 @@ function activatePowerUp(x, y) {
   drawGrid();
   setTimeout(() => {
     collapseGrid();
-    checkIngredientsDelivered();
     drawGrid();
     setTimeout(processCascade, 200);
   }, 200);
