@@ -7,10 +7,12 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const size = 8, tileSize = 40;
 
-// Emojis: ca înainte (0-5 buline, 6 ingredient 🍎, 7 bombă linie 💥, 8 bombă coloană 💣, 9 bombă culoare 🌈,
-// 10 ciocolată 🍫, 11 portal 🌀, 12 blocaj încuiat 🔒)
-const baseEmojis = ['🔵','🟠','🟢','🟣','🔴','🟡','🍎','💥','💣','🌈','🍫','🌀','🔒'];
+const baseEmojis = [
+  '🔵','🟠','🟢','🟣','🔴','🟡',   // 0-5 buline
+  '🍎','💥','💣','🌈','🍫','🌀','🔒'
+]; // 6 ingredient, 7 bombă linie, 8 bombă coloană, 9 bombă culoare, 10 ciocolată, 11 portal, 12 blocaj încuiat
 let emojis = baseEmojis.slice(0,13);
+
 // Sunete
 const swapSound = document.getElementById('swapSound');
 const matchSound = document.getElementById('matchSound');
@@ -26,12 +28,10 @@ function playWin() { winSound.currentTime = 0; winSound.play(); }
 function playFail() { failSound.currentTime = 0; failSound.play(); }
 
 // --- GLOBAL GAME STATE ---
-let levelData = []; // array cu obiective pe nivel
+let levelData = [];
 let mapProgress = JSON.parse(localStorage.getItem('match3_mapProgress')||'{}');
 let leaderboardData = JSON.parse(localStorage.getItem('match3_leaderboard')||'[]');
 let currentLevel = 0;
-
-// --- SCREEN STATE ---
 let gameState = {};
 let timerInterval = null;
 let lives = Number(localStorage.getItem('match3_lives')) || INITIAL_LIVES;
@@ -43,14 +43,12 @@ function renderMapScreen() {
   document.getElementById('mapScreen').style.display = 'block';
   document.getElementById('gameScreen').style.display = 'none';
   document.getElementById('lives').innerHTML = `Vieți: ${'❤️'.repeat(lives)}${'🤍'.repeat(Math.max(0,INITIAL_LIVES-lives))} (reîncărcare: <span id="lifeTimer">00:00</span>)`;
-  // buttons for levels
   let html = '';
   for(let i=0;i<NUM_LEVELS;i++){
     let ok = mapProgress[i]?.win;
     html+=`<button onclick="startLevel(${i})" style="margin:3px;${ok?'background:#b2ffb2':''}" ${lives>0?'':'disabled'}>Nivel ${i+1}${ok?' ⭐':''}</button>`;
   }
   document.getElementById('levelButtons').innerHTML=html;
-  // leaderboard
   let tb = '<tr><th>Level</th><th>Score</th><th>Stars</th></tr>';
   leaderboardData.slice(0,10).forEach(row=>tb+=`<tr><td>${row.level+1}</td><td>${row.score}</td><td>${'⭐'.repeat(row.stars)}</td></tr>`);
   document.getElementById('leaderboard').innerHTML=tb;
@@ -97,7 +95,6 @@ function startLevel(levelIdx){
   document.getElementById('mapScreen').style.display = 'none';
   document.getElementById('gameScreen').style.display = 'block';
   document.getElementById('levelTitle').innerText = 'Nivel ' + (levelIdx+1);
-  // set objectives
   let objtxt = '';
   levelData[levelIdx].forEach(o=>{
     if(o.type==='score') objtxt+=`Scor: ${o.target} `;
@@ -105,19 +102,16 @@ function startLevel(levelIdx){
     if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[6]} jos `;
   });
   document.getElementById('objectives').innerText = objtxt.trim();
-  // timer
   document.getElementById('timer').style.display = 'block';
   document.getElementById('timeLeft').innerText = `${LEVEL_TIME_LIMITS[levelIdx]}s`;
-  // lives
   lives--;
   localStorage.setItem('match3_lives',lives);
   lastLifeLoss = Date.now();
   localStorage.setItem('match3_lastLifeLoss',lastLifeLoss);
-  // initialize game
   gameState = {
     level: levelIdx, score: 0, moves: 20, stars:0,
     colorProgress: 0, ingredientProgress: 0, timer: LEVEL_TIME_LIMITS[levelIdx], timeLeft: LEVEL_TIME_LIMITS[levelIdx],
-    objective: {...levelData[levelIdx]}, grid:[], selected:null, fadeMap:[]
+    objective: {...levelData[levelIdx]}, grid:[], fadeMap:[], selected:null
   };
   initGameGrid(levelIdx);
   drawGrid();
@@ -131,6 +125,7 @@ function startLevel(levelIdx){
   },1000);
 }
 
+// --- CUTIE DE BONUS, PORTAL, LOCKS ETC ---
 function initGameGrid(levelIdx){
   let grid = Array(size).fill().map(()=>Array(size).fill(0));
   let fadeMap = Array(size).fill().map(()=>Array(size).fill(1));
@@ -146,6 +141,15 @@ function initGameGrid(levelIdx){
       if(grid[y][x]<6){ grid[y][x]=6; placed++; }
     }
   }
+  // portaluri: mereu în pereche (fix pentru demo)
+  [[0,0],[size-1,size-1],[0,size-1],[size-1,0]].forEach((p,i)=>{
+    if(grid[p[0]][p[1]]<6) grid[p[0]][p[1]]=11;
+  });
+  // blocaje încuiate
+  for(let i=0;i<2+levelIdx;i++){
+    let x = Math.floor(Math.random()*size), y = Math.floor(Math.random()*size);
+    if(grid[y][x]<6) grid[y][x]=12;
+  }
   // bonus random: adaugă 1-2 power-up-uri
   let bonusCount = 1+Math.floor(Math.random()*2);
   for(let i=0;i<bonusCount;i++){
@@ -156,15 +160,15 @@ function initGameGrid(levelIdx){
   gameState.fadeMap = fadeMap;
 }
 
-function randomNormalPiece(){ return Math.floor(Math.random()*6); }
-
-// --- GRID DRAW & LOGIC ---
+// --- DRAW ---
 function drawGrid() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   let grid = gameState.grid, fadeMap = gameState.fadeMap;
   for(let y=0;y<size;y++)
     for(let x=0;x<size;x++){
-      ctx.fillStyle = "#fff";
+      if(grid[y][x]===11) ctx.fillStyle="#e0e0ff";
+      else if(grid[y][x]===12) ctx.fillStyle="#f9ebea";
+      else ctx.fillStyle="#fff";
       ctx.fillRect(x*tileSize,y*tileSize,tileSize-2,tileSize-2);
       if(grid[y][x]!==-1){
         ctx.globalAlpha = fadeMap[y][x];
@@ -185,7 +189,7 @@ function drawGrid() {
   document.getElementById('stars').innerText = "Stele: " + ('⭐'.repeat(getStars()));
 }
 
-// --- OBJECTIVE & STARS ---
+// --- STARS ---
 function getStars(){
   let lvl = gameState.level;
   let obj = levelData[lvl];
@@ -196,18 +200,37 @@ function getStars(){
   return ok;
 }
 
-// --- GAMEPLAY ---
+// --- CLICK LOGIC ---
 canvas.addEventListener('click',function(e){
   if(gameState.timeLeft<=0) return;
   let x = Math.floor(e.offsetX/tileSize), y = Math.floor(e.offsetY/tileSize);
+  let val = gameState.grid[y][x];
+  // activare directă power-up
+  if(val===7||val===8||val===9){
+    activatePowerUp(x,y,val);
+    gameState.moves--;
+    if(gameState.moves<=0) endLevel(false);
+    return;
+  }
+  // portal și lock nu se mută
+  if(val===11||val===12) return;
   if(gameState.selected){
+    let sel = gameState.grid[gameState.selected.y][gameState.selected.x];
     if(isAdjacent(gameState.selected.x,gameState.selected.y,x,y)){
+      // combinație power-up-uri
+      if(tryPowerCombo(gameState.selected.x,gameState.selected.y,x,y)){
+        gameState.selected=null;
+        gameState.moves--;
+        if(gameState.moves<=0) endLevel(false);
+        processMatchCascade();
+        return;
+      }
       let temp=gameState.grid[gameState.selected.y][gameState.selected.x];
       gameState.grid[gameState.selected.y][gameState.selected.x]=gameState.grid[y][x];
       gameState.grid[y][x]=temp;
       playSwap();
       drawGrid();
-      processMatches();
+      processMatchCascade();
       gameState.selected=null;
       gameState.moves--;
       if(gameState.moves<=0) endLevel(false);
@@ -221,21 +244,45 @@ canvas.addEventListener('click',function(e){
   }
 });
 
+// --- CASCADE MATCHES ---
+function processMatchCascade() {
+  setTimeout(()=>{
+    let changed = false;
+    do {
+      changed = processMatches();
+    } while(changed);
+    checkIngredientsDelivered();
+    drawGrid();
+    if(getStars()===levelData[currentLevel].length) endLevel(true);
+  },200);
+}
+
 // --- MATCH DETECT & REMOVE ---
 function processMatches(){
   let matches = Array(size).fill().map(()=>Array(size).fill(false));
   let grid = gameState.grid;
+  let powerups = [];
   // detect horizontal
   for(let y=0;y<size;y++){
     let count=1;
     for(let x=1;x<size;x++){
       if(grid[y][x]!==-1&&grid[y][x]<6&&grid[y][x]===grid[y][x-1]) count++;
       else{
-        if(count>=3) for(let k=0;k<count;k++) matches[y][x-k-1]=true;
+        if(count>=3){
+          for(let k=0;k<count;k++) matches[y][x-k-1]=true;
+          if(count===4) powerups.push({y,x:x-2,type:7});
+          if(count===5) powerups.push({y,x:x-3,type:8});
+          if(count>=6) powerups.push({y,x:x-4,type:9});
+        }
         count=1;
       }
     }
-    if(count>=3) for(let k=0;k<count;k++) matches[y][size-k-1]=true;
+    if(count>=3){
+      for(let k=0;k<count;k++) matches[y][size-k-1]=true;
+      if(count===4) powerups.push({y,x:size-2,type:7});
+      if(count===5) powerups.push({y,x:size-3,type:8});
+      if(count>=6) powerups.push({y,x:size-4,type:9});
+    }
   }
   // detect vertical
   for(let x=0;x<size;x++){
@@ -243,11 +290,21 @@ function processMatches(){
     for(let y=1;y<size;y++){
       if(grid[y][x]!==-1&&grid[y][x]<6&&grid[y][x]===grid[y-1][x]) count++;
       else{
-        if(count>=3) for(let k=0;k<count;k++) matches[y-k-1][x]=true;
+        if(count>=3){
+          for(let k=0;k<count;k++) matches[y-k-1][x]=true;
+          if(count===4) powerups.push({y:y-2,x,type:7});
+          if(count===5) powerups.push({y:y-3,x,type:8});
+          if(count>=6) powerups.push({y:y-4,x,type:9});
+        }
         count=1;
       }
     }
-    if(count>=3) for(let k=0;k<count;k++) matches[size-k-1][x]=true;
+    if(count>=3){
+      for(let k=0;k<count;k++) matches[size-k-1][x]=true;
+      if(count===4) powerups.push({y:size-2,x,type:7});
+      if(count===5) powerups.push({y:size-3,x,type:8});
+      if(count>=6) powerups.push({y:size-4,x,type:9});
+    }
   }
   // remove
   let removed=0,colRemoved=0;
@@ -258,13 +315,16 @@ function processMatches(){
         grid[y][x]=-1;
         removed++;
       }
+  for(const p of powerups)
+    grid[p.y][p.x]=p.type;
   gameState.score+=removed*10;
   gameState.colorProgress+=colRemoved;
-  playMatch();
+  if(removed) playMatch();
+  if(removed>=10) playPop();
+  if(powerups.length) playExplosion();
   collapseGrid();
-  checkIngredientsDelivered();
-  drawGrid();
-  if(getStars()===levelData[currentLevel].length) endLevel(true);
+  unlockLocks(matches);
+  return removed>0;
 }
 
 // --- COLLAPSE & INGREDIENT ---
@@ -277,6 +337,21 @@ function collapseGrid(){
   for(let x=0;x<size;x++)
     for(let y=0;y<size;y++)
       if(gameState.grid[y][x]===-1) gameState.grid[y][x]=randomNormalPiece();
+  // teleportare (simplă demo): dacă o bulină cade pe portal, sare la portal pereche
+  let portals = [[0,0],[size-1,size-1],[0,size-1],[size-1,0]];
+  for(let i=0;i<portals.length;i+=2){
+    let a=portals[i], b=portals[i+1];
+    if(gameState.grid[a[0]][a[1]]<6){
+      gameState.grid[b[0]][b[1]]=gameState.grid[a[0]][a[1]];
+      gameState.grid[a[0]][a[1]]=11;
+      playSwap();
+    }
+    if(gameState.grid[b[0]][b[1]]<6){
+      gameState.grid[a[0]][a[1]]=gameState.grid[b[0]][b[1]];
+      gameState.grid[b[0]][b[1]]=11;
+      playSwap();
+    }
+  }
 }
 function checkIngredientsDelivered(){
   for(let x=0;x<size;x++){
@@ -288,6 +363,75 @@ function checkIngredientsDelivered(){
       playPop();
     }
   }
+}
+
+// --- ACTIVARE DIRECTĂ POWER-UP ---
+function activatePowerUp(x,y,p){
+  if(p===7){ // bombă linie
+    for(let i=0;i<size;i++) gameState.grid[y][i]=-1;
+    playExplosion(); playPop(); gameState.score+=size*10;
+  }
+  else if(p===8){ // bombă coloană
+    for(let i=0;i<size;i++) gameState.grid[i][x]=-1;
+    playExplosion(); playPop(); gameState.score+=size*10;
+  }
+  else if(p===9){ // bombă culoare
+    let chosen = prompt("Alege culoarea (0-5):\n"+baseEmojis.slice(0,6).map((e,i)=>i+":"+e).join(" "));
+    chosen = Number(chosen);
+    if(isNaN(chosen)||chosen<0||chosen>5) return;
+    for(let yy=0;yy<size;yy++)
+      for(let xx=0;xx<size;xx++)
+        if(gameState.grid[yy][xx]===chosen) gameState.grid[yy][xx]=-1;
+    playExplosion(); playPop(); gameState.score+=size*size*5;
+  }
+  gameState.grid[y][x]=randomNormalPiece();
+  drawGrid();
+  setTimeout(()=>{ processMatchCascade(); },200);
+}
+
+// --- COMBINAȚIE POWER-UP ---
+function tryPowerCombo(x1,y1,x2,y2){
+  let p1=gameState.grid[y1][x1],p2=gameState.grid[y2][x2];
+  if((p1===7&&p2===8)||(p1===8&&p2===7)){
+    for(let i=0;i<size;i++)
+      gameState.grid[y1][i]=-1,gameState.grid[i][x2]=-1;
+    playExplosion(); playPop(); gameState.score+=size*size*10;
+    return true;
+  }
+  if((p1===9&&(p2===7||p2===8))||(p2===9&&(p1===7||p1===8))){
+    for(let y=0;y<size;y++)
+      for(let x=0;x<size;x++)
+        gameState.grid[y][x]=-1;
+    playExplosion(); playPop(); gameState.score+=size*size*20;
+    return true;
+  }
+  if(p1===9&&p2===9){
+    for(let y=0;y<size;y++)
+      for(let x=0;x<size;x++)
+        gameState.grid[y][x]=-1;
+    playExplosion(); playPop(); gameState.score+=size*size*25;
+    return true;
+  }
+  return false;
+}
+
+// --- UNLOCK LOCKS ---
+function unlockLocks(matches){
+  for(let y=0;y<size;y++)
+    for(let x=0;x<size;x++)
+      if(gameState.grid[y][x]===12){
+        let unlocked=false;
+        for(const [dy,dx] of [[0,1],[1,0],[0,-1],[-1,0]]){
+          let yy=y+dy,xx=x+dx;
+          if(yy>=0&&yy<size&&xx>=0&&xx<size){
+            if(matches[yy][xx]) unlocked=true;
+          }
+        }
+        if(unlocked){
+          gameState.grid[y][x]=randomNormalPiece();
+          playExplosion();
+        }
+      }
 }
 
 // --- END LEVEL & LEADERBOARD ---
