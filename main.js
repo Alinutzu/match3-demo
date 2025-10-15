@@ -462,6 +462,8 @@ function processCascade() {
       playFail();
       initGrid();
       drawGrid();
+      selected = null;
+      gameOver = false;
     }
     return false;
   }
