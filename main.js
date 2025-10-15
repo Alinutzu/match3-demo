@@ -144,15 +144,15 @@ function startLevel(lvl){
   document.getElementById('timer').style.display = 'block';
   document.getElementById('timeLeft').innerText = `${timeLeft}s`;
   timerInterval && clearInterval(timerInterval);
-  timerInterval = setInterval(()=>{
-    timeLeft--;
-    document.getElementById('timeLeft').innerText = `${timeLeft}s`;
-    if(timeLeft<=0 && !gameOver){
-      gameOver = true;
-      drawGrid();
-    }
-  },1000);
-}
+timerInterval = setInterval(()=>{
+  timeLeft--;
+  document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+  if(timeLeft <= 0 && !gameOver){
+    gameOver = true;
+    clearInterval(timerInterval); // <-- adaugă această linie!
+    drawGrid();
+  }
+},1000);
 
 // INIT GRID + BONUS
 function updateLevelParameters() {
@@ -448,11 +448,14 @@ function processCascade() {
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
-    // Mută DOAR bulinele normale/ingredientul (0-6) în jos
+    // Mută DOAR bulinele normale/ingredientul (0-6) în jos, piesele speciale rămân pe loc
     for (let y = size - 1; y >= 0; y--) {
       if (grid[y][x] >= 0 && grid[y][x] <= 6) {
         grid[pointer][x] = grid[y][x];
         if (pointer !== y) grid[y][x] = -1;
+        pointer--;
+      } else if (grid[y][x] > 6) {
+        // Piesele speciale rămân pe loc!
         pointer--;
       }
     }
@@ -486,6 +489,18 @@ function checkIngredientsDelivered() {
       grid[y][x] = randomNormalPiece();
       playExplosion();
       playPop();
+      // Adaugă un nou ingredient sus, dacă mai e nevoie
+      if (ingredientDelivered < ingredientCount) {
+        let found = false;
+        // Pune un măr într-o coloană random sus, unde nu e deja alt ingredient/bombă/portal/lock
+        for (let tryCol = 0; tryCol < size && !found; tryCol++) {
+          let col = Math.floor(Math.random() * size);
+          if (grid[0][col] < 6) {
+            grid[0][col] = ingredientType;
+            found = true;
+          }
+        }
+      }
     }
   }
 }
