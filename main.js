@@ -24,7 +24,7 @@ function playExplosion() { explosionSound.currentTime = 0; explosionSound.play()
 function playWin() { winSound.currentTime = 0; winSound.play(); }
 function playFail() { failSound.currentTime = 0; failSound.play(); }
 
-// --- MAP & PROGRESS ---
+// MAP & PROGRESS
 let levelData = [];
 let mapProgress = JSON.parse(localStorage.getItem('match3_mapProgress')||'{}');
 let leaderboardData = JSON.parse(localStorage.getItem('match3_leaderboard')||'[]');
@@ -34,7 +34,7 @@ let currentLevel = 1;
 let timerInterval = null;
 let lifeRegenTimer = null;
 
-// --- GAME STATE ---
+// GAME STATE
 let grid = [];
 let selected = null;
 let score = 0;
@@ -57,7 +57,7 @@ let timeLeft = 60;
 let objectives = [];
 let bonusPowerups = 0;
 
-// --- LEVEL OBJECTIVES ---
+// LEVEL OBJECTIVES
 function setupLevels(){
   levelData = [];
   for(let i=1;i<=NUM_LEVELS;i++){
@@ -70,7 +70,7 @@ function setupLevels(){
 }
 setupLevels();
 
-// --- MAP SCREEN ---
+// MAP SCREEN
 function renderMapScreen() {
   document.getElementById('mapScreen').style.display = 'block';
   document.getElementById('gameScreen').style.display = 'none';
@@ -106,7 +106,7 @@ function updateLifeTimer() {
   }
 }
 
-// --- LEVEL START ---
+// LEVEL START
 function startLevel(lvl){
   currentLevel = lvl;
   document.getElementById('mapScreen').style.display = 'none';
@@ -130,14 +130,14 @@ function startLevel(lvl){
   gameOver = false;
   selected = null;
   document.getElementById('okLevel').style.display = "none";
-  document.getElementById('level').innerText = `Nivel: ${lvl}`;
+  document.getElementById('levelTitle').innerText = `Nivel ${lvl}`;
   let objtxt = '';
   objectives.forEach(o=>{
     if(o.type==='score') objtxt+=`Scor: ${o.target} `;
     if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} `;
     if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos `;
   });
-  document.getElementById('mission').innerText = objtxt.trim();
+  document.getElementById('objectives').innerText = objtxt.trim();
   updateLevelParameters();
   initGrid();
   drawGrid();
@@ -154,7 +154,21 @@ function startLevel(lvl){
   },1000);
 }
 
-// --- INIT GRID + BONUS ---
+// INIT GRID + BONUS
+function updateLevelParameters() {
+  moves = 15 + 5 * (currentLevel - 1);
+  ingredientCount = objectives[2]?.count ?? 0;
+  missionColor = objectives[1]?.color ?? 0;
+  missionColorTarget = objectives[1]?.target ?? 10;
+  missionColorProgress = 0;
+  ingredientType = 6;
+  ingredientDelivered = 0;
+}
+
+function randomNormalPiece() {
+  return Math.floor(Math.random() * 6);
+}
+
 function initGrid() {
   grid = Array(size).fill().map(() => Array(size).fill(0));
   fadeMap = Array(size).fill().map(() => Array(size).fill(1));
@@ -202,7 +216,7 @@ function initGrid() {
   }
 }
 
-// --- DRAW & UI ---
+// DRAW & UI
 function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < size; y++)
@@ -238,14 +252,14 @@ function drawGrid() {
   document.getElementById('score').innerText = "Scor: " + score;
   document.getElementById('moves').innerText = "Mutări rămase: " + moves;
   document.getElementById('highscore').innerText = "Highscore: " + highscore;
-  document.getElementById('level').innerText = `Nivel: ${currentLevel}`;
+  document.getElementById('levelTitle').innerText = `Nivel ${currentLevel}`;
   let objtxt = '';
   objectives.forEach(o=>{
     if(o.type==='score') objtxt+=`Scor: ${o.target} `;
     if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} `;
     if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos `;
   });
-  document.getElementById('mission').innerText = objtxt.trim();
+  document.getElementById('objectives').innerText = objtxt.trim();
   document.getElementById('stars').innerText = "Stele: " + getStars().map(s => "⭐").join("");
 
   if (gameOver) {
