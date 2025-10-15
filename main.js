@@ -258,6 +258,7 @@ function drawGrid() {
   }
 }
 
+// --- FUNCȚII CRITICE pentru event listener şi hint --- //
 function getStars() {
   let ok = [];
   if (score >= objectives[0].target) ok.push(1);
@@ -298,48 +299,6 @@ function findAnyValidMove() {
       }
     }
   return null;
-}
-
-function showEndModal() {
-  document.getElementById('endModal').style.display = 'block';
-  let msg = '';
-  if (ingredientDelivered >= ingredientCount && missionColorProgress >= missionColorTarget && score >= objectives[0].target) {
-    lastLevelWin = true;
-    msg = `<div style="font-size:22px;margin-bottom:8px;">✅ Nivel ${currentLevel} complet!</div>`;
-    msg += `<div style="margin-bottom:6px;">Scor: <b>${score}</b> | Stele: <b>${getStars().length}</b></div>`;
-    msg += `<button id="okBtn" style="font-size:20px;padding:8px 32px;">OK</button>`;
-    playWin();
-    leaderboardData.unshift({level:currentLevel,score:score,stars:getStars().length});
-    leaderboardData=leaderboardData.slice(0,50);
-    localStorage.setItem('match3_leaderboard',JSON.stringify(leaderboardData));
-    mapProgress[currentLevel]={win:true,stars:getStars().length};
-    localStorage.setItem('match3_mapProgress',JSON.stringify(mapProgress));
-  } else {
-    lastLevelWin = false;
-    msg = `<div style="font-size:22px;margin-bottom:8px;">❌ Ai pierdut!</div>`;
-    msg += `<div style="margin-bottom:6px;">Scor: <b>${score}</b> | Stele: <b>${getStars().length}</b></div>`;
-    msg += `<button id="okBtn" style="font-size:20px;padding:8px 32px;">OK</button>`;
-    playFail();
-    mapProgress[currentLevel]={win:false,stars:0};
-    localStorage.setItem('match3_mapProgress',JSON.stringify(mapProgress));
-  }
-  document.getElementById('endModal').innerHTML = msg;
-  setTimeout(() => {
-    document.getElementById('okBtn').onclick = function() {
-      document.getElementById('endModal').style.display = 'none';
-      if (lastLevelWin && currentLevel < MAX_LEVELS) {
-        startLevel(currentLevel + 1);
-      } else {
-        startLevel(currentLevel);
-      }
-    };
-  }, 100);
-  if (score > highscore) {
-    highscore = score;
-    localStorage.setItem("match3-highscore", highscore);
-    let hsElement = document.getElementById('highscore');
-    if (hsElement) hsElement.innerText = "Highscore: " + highscore;
-  }
 }
 
 // --- PATCH: CANVAS EVENT LISTENER --- //
@@ -392,9 +351,8 @@ canvas.addEventListener('click', function(e) {
   if (!gameOver) hintTimeout = setTimeout(showHint, 3000);
 });
 
-// --- RESTUL FUNCȚIILOR (detectMatches, collapseGrid, activatePowerUp, showHint etc) ---
-
-// (Păstrează funcțiile tale existente din main.js repo pentru: detectMatches, collapseGrid, activatePowerUp, showHint, etc.)
+// --- RESTUL FUNCȚIILOR (detectMatches, collapseGrid, activatePowerUp...) --- //
+// (Păstrează funcțiile tale existente din main.js repo pentru: detectMatches, collapseGrid, activatePowerUp, etc.)
 
 document.getElementById('restart').addEventListener('click', function() {
   startLevel(currentLevel);
