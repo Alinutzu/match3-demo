@@ -2,20 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Match-3 Portals & Locks & Power Combos</title>
+  <title>Match-3 Map & Features</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Match-3 Avansat</h1>
-  <div id="level" style="font-size:20px; margin-bottom:6px;">Nivel: 1</div>
-  <div id="mission" style="font-size:18px; margin-bottom:6px;">Obiectiv: Adu 2 🍎 jos & Elimină 10 buline albastre</div>
-  <div id="score" style="font-size:22px; margin-bottom:4px;">Scor: 0</div>
-  <div id="stars" style="font-size:22px; margin-bottom:4px;">Stele: ⭐⭐⭐</div>
-  <div id="highscore" style="font-size:18px; margin-bottom:4px;">Highscore: 0</div>
-  <div id="moves" style="font-size:18px; margin-bottom:10px;">Mutări rămase: 15</div>
-  <button id="restart" style="margin-bottom:10px;">Restart nivel</button>
-  <button id="okLevel" style="margin-bottom:10px; display:none;">OK</button>
-  <canvas id="game" width="320" height="320"></canvas>
+  <div id="mapScreen" style="display:block;">
+    <h1>Match-3 - Hartă Niveluri</h1>
+    <div id="lives" style="font-size:18px;">Vieți: ❤️❤️❤️ (reîncărcare: <span id="lifeTimer">00:00</span>)</div>
+    <div id="levelButtons"></div>
+    <div>
+      <h2>Leaderboard</h2>
+      <table id="leaderboard" border="1" style="margin-bottom:12px;"></table>
+    </div>
+  </div>
+  <div id="gameScreen" style="display:none;">
+    <h1 id="levelTitle">Nivel 1</h1>
+    <div id="objectives" style="font-size:16px; margin-bottom:4px;"></div>
+    <div id="timer" style="font-size:18px; margin-bottom:4px;">Timp rămas: <span id="timeLeft"></span></div>
+    <div id="score" style="font-size:22px; margin-bottom:4px;">Scor: 0</div>
+    <div id="stars" style="font-size:22px; margin-bottom:4px;">Stele: ⭐⭐⭐</div>
+    <div id="moves" style="font-size:18px; margin-bottom:10px;">Mutări rămase: 15</div>
+    <button id="restart" style="margin-bottom:10px;">Restart nivel</button>
+    <button id="okLevel" style="margin-bottom:10px; display:none;">OK</button>
+    <canvas id="game" width="320" height="320"></canvas>
+  </div>
 
   <!-- Sunete integrate LOCAL -->
   <audio id="swapSound" src="sounds/swap.mp3"></audio>
@@ -24,7 +34,6 @@
   <audio id="explosionSound" src="sounds/explosion.mp3"></audio>
   <audio id="winSound" src="sounds/win.mp3"></audio>
   <audio id="failSound" src="sounds/fail.mp3"></audio>
-
   <script src="main.js"></script>
 </body>
 </html>
