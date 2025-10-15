@@ -1,7 +1,7 @@
 // CONFIG
 const MAX_LEVELS = 20;
 const INITIAL_LIVES = 3;
-const LIFE_REGEN_MINUTES = 1;
+const LIFE_REGEN_MINUTES = 10;
 const LEVEL_TIME_LIMITS = Array.from({length: MAX_LEVELS}, (_, i) => 60 + i * 10);
 const size = 8, tileSize = 40;
 const baseEmojis = [
@@ -65,54 +65,6 @@ function generateLevelData(level){
     {type:'ingredient', count: Math.min(1 + Math.floor(level/2), 5)}
   ];
 }
-canvas.addEventListener('click', function(e) {
-  if (gameOver || timeLeft <= 0) return;
-  if (hintTimeout) clearTimeout(hintTimeout);
-  hintMove = null;
-
-  const rect = canvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left) / tileSize);
-  const y = Math.floor((e.clientY - rect.top) / tileSize);
-
-  if (x < 0 || x >= size || y < 0 || y >= size) return;
-  if (grid[y][x] === 7 || grid[y][x] === 8 || grid[y][x] === 9) {
-    activatePowerUp(x, y);
-    moves--;
-    if (moves <= 0) gameOver = true;
-    drawGrid();
-    return;
-  }
-  if (grid[y][x] === 11 || grid[y][x] === 12) return;
-  if (selected) {
-    if (isAdjacent(selected.x, selected.y, x, y)) {
-      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[selected.y][selected.x] === 11 || grid[selected.y][selected.x] === 12) return;
-      if(tryPowerCombo(selected.x,selected.y,x,y)){
-        selected = null;
-        moves--;
-        if (moves <= 0) gameOver = true;
-        setTimeout(processCascade, 200);
-        drawGrid();
-        return;
-      }
-      let temp = grid[selected.y][selected.x];
-      grid[selected.y][selected.x] = grid[y][x];
-      grid[y][x] = temp;
-      playSwap();
-      drawGrid();
-      setTimeout(processCascade, 200);
-      selected = null;
-      moves--;
-      if (moves <= 0) gameOver = true;
-    } else {
-      selected = {x, y};
-      drawGrid();
-    }
-  } else {
-    selected = {x, y};
-    drawGrid();
-  }
-  if (!gameOver) hintTimeout = setTimeout(showHint, 3000);
-});
 
 // MAP SCREEN
 function renderMapScreen() {
@@ -356,13 +308,60 @@ function showEndModal() {
   }
 }
 
-// restul funcțiilor (detectMatches, collapseGrid, etc) rămân la fel ca varianta actuală din repo
-// ... [as in your repo, unchanged]
-
-// Event listeners
+// --- PATCH: CANVAS EVENT LISTENER --- //
 canvas.addEventListener('click', function(e) {
-  console.log("Canvas click", gameOver, timeLeft);
   if (gameOver || timeLeft <= 0) return;
+  if (hintTimeout) clearTimeout(hintTimeout);
+  hintMove = null;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / tileSize);
+  const y = Math.floor((e.clientY - rect.top) / tileSize);
+
+  if (x < 0 || x >= size || y < 0 || y >= size) return;
+  if (grid[y][x] === 7 || grid[y][x] === 8 || grid[y][x] === 9) {
+    activatePowerUp(x, y);
+    moves--;
+    if (moves <= 0) gameOver = true;
+    drawGrid();
+    return;
+  }
+  if (grid[y][x] === 11 || grid[y][x] === 12) return;
+  if (selected) {
+    if (isAdjacent(selected.x, selected.y, x, y)) {
+      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[selected.y][selected.x] === 11 || grid[selected.y][selected.x] === 12) return;
+      if(tryPowerCombo(selected.x,selected.y,x,y)){
+        selected = null;
+        moves--;
+        if (moves <= 0) gameOver = true;
+        setTimeout(processCascade, 200);
+        drawGrid();
+        return;
+      }
+      let temp = grid[selected.y][selected.x];
+      grid[selected.y][selected.x] = grid[y][x];
+      grid[y][x] = temp;
+      playSwap();
+      drawGrid();
+      setTimeout(processCascade, 200);
+      selected = null;
+      moves--;
+      if (moves <= 0) gameOver = true;
+    } else {
+      selected = {x, y};
+      drawGrid();
+    }
+  } else {
+    selected = {x, y};
+    drawGrid();
+  }
+  if (!gameOver) hintTimeout = setTimeout(showHint, 3000);
+});
+
+// --- RESTUL FUNCȚIILOR (detectMatches, collapseGrid, activatePowerUp, showHint etc) ---
+
+// (Păstrează funcțiile tale existente din main.js repo pentru: detectMatches, collapseGrid, activatePowerUp, showHint, etc.)
+
 document.getElementById('restart').addEventListener('click', function() {
   startLevel(currentLevel);
 });
