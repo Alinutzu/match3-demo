@@ -74,7 +74,7 @@ setupLevels();
 function renderMapScreen() {
   document.getElementById('mapScreen').style.display = 'block';
   document.getElementById('gameScreen').style.display = 'none';
-  document.getElementById('lives').innerHTML = `Vieți: ${'❤️'.repeat(lives)}${'🤍'.repeat(Math.max(0,INITIAL_LIVES-lives))} (reîncărcare: <span id="lifeTimer">00:00</span>)`;
+  document.getElementById('lives').innerHTML = `Vieți: ${'❤️'.repeat(Math.max(0, lives))}${'🤍'.repeat(Math.max(0, INITIAL_LIVES-lives))} (reîncărcare: <span id="lifeTimer">00:00</span>)`;
   let html = '';
   for(let i=1;i<=NUM_LEVELS;i++){
     let ok = mapProgress[i]?.win;
