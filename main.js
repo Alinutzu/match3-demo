@@ -447,7 +447,7 @@ function processCascade() {
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
-    // Mută DOAR buline/ingrediente (0-6) în jos
+    // Mută DOAR bulinele normale/ingredientul (0-6) în jos
     for (let y = size - 1; y >= 0; y--) {
       if (grid[y][x] >= 0 && grid[y][x] <= 6) {
         grid[pointer][x] = grid[y][x];
@@ -455,12 +455,13 @@ function collapseGrid() {
         pointer--;
       }
     }
-    // Umple golurile de sus cu buline noi
+    // Umple golurile de sus cu buline noi, dar nu suprascrie piesele speciale
     for (let y = pointer; y >= 0; y--) {
-      grid[y][x] = randomNormalPiece();
+      // Daca pe pozitia respectiva era o piesa speciala, nu o suprascrie!
+      if (grid[y][x] === -1) grid[y][x] = randomNormalPiece();
     }
   }
-  // Portalurile, locks, bombs, etc. rămân pe poziții (nu se mută)
+  // Portalurile, locks, bombs etc. rămân pe poziții (nu se mută)
   // Teleportare portaluri
   for (let i = 0; i < portalPairs.length; i++) {
     let [a, b] = portalPairs[i];
