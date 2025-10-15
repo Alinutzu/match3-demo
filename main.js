@@ -642,11 +642,11 @@ document.getElementById('restart').addEventListener('click', function() {
   startLevel(currentLevel);
 });
 document.getElementById('okLevel').addEventListener('click', function() {
-  if (gameOver && currentLevel < MAX_LEVELS) {
+  if (lastLevelWin && currentLevel < MAX_LEVELS) {
     currentLevel++;
     startLevel(currentLevel);
   } else {
-    startLevel(1);
+    startLevel(currentLevel); // Rejoacă nivelul curent!
   }
 });
 
