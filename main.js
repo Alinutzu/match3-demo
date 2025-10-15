@@ -3,9 +3,10 @@ const ctx = canvas.getContext('2d');
 const size = 8;
 const tileSize = 40;
 
-// Emojis: 0-5 buline, 6 ingredient 🍎, 7 ingredient 🍒, 8 gheață (2 vieți), 9 piatră (3 vieți), 10 ciocolată
-const baseEmojis = ['🔵','🟠','🟢','🟣','🔴','🟡','🍎','🍒','🧊','🟪','🍫'];
-let emojis = baseEmojis.slice(0,11); // modifică aici dacă vrei mai mult/puțin
+// Emojis: 0-5 buline, 6 ingredient 🍎, 7 bombă linie 💥, 8 bombă coloană 💣, 9 bombă culoare 🌈,
+// 10 ciocolată 🍫, 11 portal 🌀, 12 blocaj încuiat 🔒
+const baseEmojis = ['🔵','🟠','🟢','🟣','🔴','🟡','🍎','💥','💣','🌈','🍫','🌀','🔒'];
+let emojis = baseEmojis.slice(0,13);
 
 // Sunete
 const swapSound = document.getElementById('swapSound');
@@ -37,39 +38,32 @@ let missionColorProgress = 0;
 let ingredientType = 6; // 🍎 index
 let ingredientCount = 2;
 let ingredientDelivered = 0;
-let obstaclesIce = 4;
-let obstaclesStone = 3;
-let chocolateCount = 2;
+let portalPairs = []; // perechi de portaluri
+let lockPositions = []; // blocaje încuiate
 let hintTimeout = null;
 let hintMove = null;
 
-// Obstacole cu vieți
-let iceLives = {}; // index [y][x] = vieți rămase (2)
-let stoneLives = {}; // index [y][x] = vieți rămase (3)
-let chocolateSpread = []; // array de [y][x] pentru ciocolată
-
 function updateLevelParameters() {
   moves = 15 + 5 * (level - 1);
-  obstaclesIce = 4 + level;
-  obstaclesStone = 3 + Math.floor(level/2);
-  chocolateCount = 2 + Math.floor(level/2);
   ingredientCount = 2 + Math.floor(level/2);
   missionColor = Math.floor(Math.random()*6);
   missionColorTarget = 10 + level * 2;
   missionColorProgress = 0;
-  ingredientType = 6 + (level % 2); // 🍎 sau 🍒
+  ingredientType = 6; // 🍎, poți alterna cu 7 pentru 🍒
   ingredientDelivered = 0;
 }
 
+// Buline normale
 function randomNormalPiece() {
   return Math.floor(Math.random() * 6); // 0...5 buline
 }
 
-// Inițializare grilă cu obstacole și ingrediente
+// Inițializare grilă cu obstacole, ingrediente, portaluri și blocaje încuiate
 function initGrid() {
   grid = Array(size).fill().map(() => Array(size).fill(0));
   fadeMap = Array(size).fill().map(() => Array(size).fill(1));
-  iceLives = {}; stoneLives = {}; chocolateSpread = [];
+  portalPairs = [];
+  lockPositions = [];
   // buline normale
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++)
@@ -84,39 +78,23 @@ function initGrid() {
       placed++;
     }
   }
-  // obstacole gheață
-  placed = 0;
-  while (placed < obstaclesIce) {
-    let x = Math.floor(Math.random()*size);
-    let y = Math.floor(Math.random()*size);
-    if (grid[y][x] < 6) {
-      grid[y][x] = 8; // 🧊
-      if (!iceLives[y]) iceLives[y] = {};
-      iceLives[y][x] = 2;
-      placed++;
-    }
+  // portaluri: mereu în pereche
+  portalPairs = [
+    [ [0,0], [size-1,size-1] ], 
+    [ [0,size-1], [size-1,0] ]
+  ];
+  for (let i=0; i<portalPairs.length; i++) {
+    let [a,b] = portalPairs[i];
+    grid[a[0]][a[1]] = 11; // portal 🌀
+    grid[b[0]][b[1]] = 11;
   }
-  // obstacole piatră
-  placed = 0;
-  while (placed < obstaclesStone) {
+  // blocaje încuiate
+  for (let i=0;i<2+level;i++) {
     let x = Math.floor(Math.random()*size);
     let y = Math.floor(Math.random()*size);
-    if (grid[y][x] < 6) {
-      grid[y][x] = 9; // 🟪
-      if (!stoneLives[y]) stoneLives[y] = {};
-      stoneLives[y][x] = 3;
-      placed++;
-    }
-  }
-  // ciocolată
-  placed = 0;
-  while (placed < chocolateCount) {
-    let x = Math.floor(Math.random()*size);
-    let y = Math.floor(Math.random()*size);
-    if (grid[y][x] < 6) {
-      grid[y][x] = 10; // 🍫
-      chocolateSpread.push([y,x]);
-      placed++;
+    if(grid[y][x]<6){
+      grid[y][x]=12; // 🔒
+      lockPositions.push([y,x]);
     }
   }
 }
@@ -125,20 +103,11 @@ function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
-      // fundal pentru obstacole
-      if (grid[y][x] === 8) ctx.fillStyle = "#e0f7fa";
-      else if (grid[y][x] === 9) ctx.fillStyle = "#f3e5f5";
-      else if (grid[y][x] === 10) ctx.fillStyle = "#ffe0b2";
-      else ctx.fillStyle = "#fff";
+      if(grid[y][x]===11) ctx.fillStyle="#e0e0ff"; // portal
+      else if(grid[y][x]===12) ctx.fillStyle="#f9ebea"; // lock
+      else ctx.fillStyle="#fff";
       ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
-      // emoji + vieți pentru obstacole
-      if (grid[y][x] === 8 && iceLives[y] && iceLives[y][x]) {
-        ctx.font = "22px Arial";
-        ctx.fillText(emojis[grid[y][x]]+" "+iceLives[y][x], x * tileSize + tileSize/2, y * tileSize + tileSize/2);
-      } else if (grid[y][x] === 9 && stoneLives[y] && stoneLives[y][x]) {
-        ctx.font = "22px Arial";
-        ctx.fillText(emojis[grid[y][x]]+" "+stoneLives[y][x], x * tileSize + tileSize/2, y * tileSize + tileSize/2);
-      } else if (grid[y][x] !== -1) {
+      if (grid[y][x] !== -1) {
         ctx.globalAlpha = fadeMap[y][x];
         ctx.font = "32px Arial";
         ctx.textAlign = "center";
@@ -197,7 +166,6 @@ function drawGrid() {
 }
 
 function getStars() {
-  // 3 stele = obiectiv complet + scor > misiune*15; 2 = misiune + scor > misiune*10; 1 = misiune doar
   if (ingredientDelivered >= ingredientCount && missionColorProgress >= missionColorTarget) {
     if (score >= (missionColorTarget + ingredientCount*30) * 2) return [1,2,3];
     if (score >= (missionColorTarget + ingredientCount*30) * 1.5) return [1,2];
@@ -215,9 +183,7 @@ function isAdjacent(x1, y1, x2, y2) {
 
 function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
-  // Numai buline normale și ingrediente pot fi eliminate
-  // Obstacole și ciocolată nu se elimină direct
-  // Power-up logic se poate adăuga aici
+  let powerups = [];
   for (let y = 0; y < size; y++) {
     let count = 1;
     for (let x = 1; x < size; x++) {
@@ -231,6 +197,9 @@ function detectMatches(testGrid = grid) {
         if (count >= 3) {
           for (let k = 0; k < count; k++)
             toRemove[y][x - k - 1] = true;
+          if (count === 4) powerups.push({y, x: x-2, type: 7}); // 💥
+          if (count === 5) powerups.push({y, x: x-3, type: 8}); // 💣
+          if (count >= 6) powerups.push({y, x: x-4, type: 9}); // 🌈
         }
         count = 1;
       }
@@ -238,6 +207,9 @@ function detectMatches(testGrid = grid) {
     if (count >= 3) {
       for (let k = 0; k < count; k++)
         toRemove[y][size - k - 1] = true;
+      if (count === 4) powerups.push({y, x: size-2, type: 7});
+      if (count === 5) powerups.push({y, x: size-3, type: 8});
+      if (count >=6) powerups.push({y, x: size-4, type: 9});
     }
   }
   for (let x = 0; x < size; x++) {
@@ -253,6 +225,9 @@ function detectMatches(testGrid = grid) {
         if (count >= 3) {
           for (let k = 0; k < count; k++)
             toRemove[y - k - 1][x] = true;
+          if (count === 4) powerups.push({y: y-2, x, type: 7});
+          if (count === 5) powerups.push({y: y-3, x, type: 8});
+          if (count >=6) powerups.push({y: y-4, x, type: 9});
         }
         count = 1;
       }
@@ -260,9 +235,12 @@ function detectMatches(testGrid = grid) {
     if (count >= 3) {
       for (let k = 0; k < count; k++)
         toRemove[size - k - 1][x] = true;
+      if (count === 4) powerups.push({y: size-2, x, type: 7});
+      if (count === 5) powerups.push({y: size-3, x, type: 8});
+      if (count >=6) powerups.push({y: size-4, x, type: 9});
     }
   }
-  return {toRemove};
+  return {toRemove, powerups};
 }
 
 function hasAnyMatch(matches) {
@@ -291,8 +269,7 @@ function animateRemoval(matches, callback) {
   animStep();
 }
 
-// Eliminare piese și obstacole
-function removeMatches(matches) {
+function removeMatches(matches, powerups) {
   let removed = 0, colorRemoved = 0;
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++)
@@ -301,14 +278,18 @@ function removeMatches(matches) {
         grid[y][x] = -1;
         removed++;
       }
+  for (const p of powerups)
+    grid[p.y][p.x] = p.type; // bombă linie/coloană/culoare
   score += removed * 10;
   missionColorProgress += colorRemoved;
   if (removed) playMatch();
   if (removed >= 10) playPop();
+  if (powerups.length) playExplosion();
   return removed > 0;
 }
 
 function collapseGrid() {
+  // teleportare: dacă piesa cade pe portal, apare în perechea portalului
   for (let x = 0; x < size; x++) {
     let pointer = size - 1;
     for (let y = size - 1; y >= 0; y--)
@@ -316,11 +297,25 @@ function collapseGrid() {
     for (let y = pointer; y >= 0; y--)
       grid[y][x] = -1;
   }
-  // Adaugă buline noi, ingredientele și obstacolele nu se refac aici
   for (let x = 0; x < size; x++)
     for (let y = 0; y < size; y++)
       if (grid[y][x] === -1)
         grid[y][x] = randomNormalPiece();
+  // teleportare
+  for (let i=0; i<portalPairs.length; i++) {
+    let [a,b]=portalPairs[i];
+    // dacă pe portal a cade o piesă normală, mut-o pe portal b
+    if (grid[a[0]][a[1]] < 6) {
+      grid[b[0]][b[1]] = grid[a[0]][a[1]];
+      grid[a[0]][a[1]] = 11;
+      playSwap();
+    }
+    if (grid[b[0]][b[1]] < 6) {
+      grid[a[0]][a[1]] = grid[b[0]][b[1]];
+      grid[b[0]][b[1]] = 11;
+      playSwap();
+    }
+  }
 }
 
 function checkIngredientsDelivered() {
@@ -332,51 +327,57 @@ function checkIngredientsDelivered() {
       playExplosion();
       playPop();
     }
-    if (grid[y][x] === ingredientType+1) {
-      ingredientDelivered++;
-      grid[y][x] = randomNormalPiece();
+  }
+}
+
+// Blocaje încuiate: elimină dacă e match lângă ele
+function unlockLocks(matches) {
+  for(const [ly,lx] of lockPositions){
+    let unlocked=false;
+    // dacă e match pe o vecinătate
+    for(const [dy,dx] of [[0,1],[1,0],[0,-1],[-1,0]]){
+      let yy=ly+dy,xx=lx+dx;
+      if(yy>=0&&yy<size&&xx>=0&&xx<size){
+        if(matches[yy][xx]) unlocked=true;
+      }
+    }
+    if(unlocked){
+      grid[ly][lx]=randomNormalPiece();
       playExplosion();
-      playPop();
     }
   }
 }
 
-// Obstacole cu vieți: la eliminare, scad viețile
-function tryHitObstacles(matches) {
-  for (let y = 0; y < size; y++)
-    for (let x = 0; x < size; x++) {
-      if (matches[y][x]) {
-        if (grid[y][x] === 8 && iceLives[y] && iceLives[y][x]) {
-          iceLives[y][x]--;
-          if (iceLives[y][x] <= 0) grid[y][x] = randomNormalPiece(), playExplosion();
-        }
-        if (grid[y][x] === 9 && stoneLives[y] && stoneLives[y][x]) {
-          stoneLives[y][x]--;
-          if (stoneLives[y][x] <= 0) grid[y][x] = randomNormalPiece(), playExplosion();
-        }
-      }
-    }
-}
-
-// Ciocolata se extinde la fiecare mutare
-function spreadChocolate() {
-  let newSpread = [];
-  for (let i=0; i<chocolateSpread.length; i++) {
-    let [y,x] = chocolateSpread[i];
-    let dirs = [[0,1],[1,0],[0,-1],[-1,0]];
-    for (let d=0; d<dirs.length; d++) {
-      let yy = y+dirs[d][0], xx = x+dirs[d][1];
-      if (yy >= 0 && yy < size && xx >=0 && xx < size) {
-        if (grid[yy][xx] < 6) { // bulină colorată
-          grid[yy][xx] = 10;
-          newSpread.push([yy,xx]);
-          playExplosion();
-          break;
-        }
-      }
-    }
+// Combinații power-up-uri: swap între două power-up-uri
+function tryPowerCombo(x1,y1,x2,y2){
+  let p1=grid[y1][x1],p2=grid[y2][x2];
+  // bombă linie + bombă coloană
+  if((p1===7&&p2===8)||(p1===8&&p2===7)){
+    for(let i=0;i<size;i++)
+      grid[y1][i]=-1,grid[i][x2]=-1;
+    playExplosion();
+    playPop();
+    return true;
   }
-  chocolateSpread = chocolateSpread.concat(newSpread);
+  // bombă culoare + orice bombă
+  if((p1===9&&(p2===7||p2===8))||(p2===9&&(p1===7||p1===8))){
+    for(let y=0;y<size;y++)
+      for(let x=0;x<size;x++)
+        grid[y][x]=-1;
+    playExplosion();
+    playPop();
+    return true;
+  }
+  // bombă culoare + bombă culoare
+  if(p1===9&&p2===9){
+    for(let y=0;y<size;y++)
+      for(let x=0;x<size;x++)
+        grid[y][x]=-1;
+    playExplosion();
+    playPop();
+    return true;
+  }
+  return false;
 }
 
 canvas.addEventListener('click', function(e) {
@@ -388,25 +389,35 @@ canvas.addEventListener('click', function(e) {
   const y = Math.floor(e.offsetY / tileSize);
 
   if (x < 0 || x >= size || y < 0 || y >= size) return;
-  // Obstacole și ciocolată nu se mută
-  if (grid[y][x] >= 8) return;
+  // portal și lock nu se mută
+  if (grid[y][x] === 11 || grid[y][x] === 12) return;
 
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
-      if (grid[y][x] >= 8 || grid[selected.y][selected.x] >= 8) return;
+      // nu se mută portal, lock
+      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[selected.y][selected.x] === 11 || grid[selected.y][selected.x] === 12) return;
+
+      // combinație power-up-uri
+      if(tryPowerCombo(selected.x,selected.y,x,y)){
+        selected=null;
+        moves--;
+        if (moves <= 0) gameOver = true;
+        setTimeout(processMatches, 200);
+        return;
+      }
+
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
       playSwap();
       drawGrid();
       let testGrid = grid.map(row => row.slice());
-      let {toRemove} = detectMatches(testGrid);
+      let {toRemove,powerups} = detectMatches(testGrid);
       if (hasAnyMatch(toRemove)) {
         selected = null;
         moves--;
         if (moves <= 0) gameOver = true;
         setTimeout(processMatches, 200);
-        spreadChocolate(); // ciocolata crește la fiecare mutare
       } else {
         setTimeout(() => {
           let temp2 = grid[selected.y][selected.x];
@@ -428,11 +439,11 @@ canvas.addEventListener('click', function(e) {
 });
 
 function processMatches() {
-  let {toRemove} = detectMatches();
+  let {toRemove,powerups} = detectMatches();
   if (hasAnyMatch(toRemove)) {
     animateRemoval(toRemove, function() {
-      removeMatches(toRemove);
-      tryHitObstacles(toRemove);
+      removeMatches(toRemove,powerups);
+      unlockLocks(toRemove);
       drawGrid();
       setTimeout(() => {
         collapseGrid();
@@ -475,23 +486,21 @@ document.getElementById('okLevel').addEventListener('click', function() {
   drawGrid();
 });
 
-// Hint/indiciu – evidențiază automat o mutare validă
 function showHint() { hintMove = findAnyValidMove(); drawGrid(); }
 
-// Caută primul swap valid din grilă
 function findAnyValidMove() {
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
-      if (grid[y][x] >= 8) continue;
+      if (grid[y][x] === 11 || grid[y][x] === 12) continue;
       // Dreapta
-      if (x < size-1 && grid[y][x+1] >= 0 && grid[y][x+1] < 8) {
+      if (x < size-1 && grid[y][x+1] >= 0 && grid[y][x+1] !== 11 && grid[y][x+1] !== 12) {
         swap(grid, x, y, x+1, y);
         let {toRemove} = detectMatches(grid);
         swap(grid, x, y, x+1, y);
         if (hasAnyMatch(toRemove)) return {x1:x, y1:y, x2:x+1, y2:y};
       }
       // Jos
-      if (y < size-1 && grid[y+1][x] >= 0 && grid[y+1][x] < 8) {
+      if (y < size-1 && grid[y+1][x] >= 0 && grid[y+1][x] !== 11 && grid[y+1][x] !== 12) {
         swap(grid, x, y, x, y+1);
         let {toRemove} = detectMatches(grid);
         swap(grid, x, y, x, y+1);
