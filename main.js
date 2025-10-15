@@ -100,7 +100,9 @@ function updateLifeTimer() {
     localStorage.setItem('match3_lives',lives);
     lastLifeLoss = Date.now();
     localStorage.setItem('match3_lastLifeLoss',lastLifeLoss);
-    renderMapScreen();
+    // Doar actualizează viețile, NU schimba ecranul!
+    // NU apela renderMapScreen() aici!
+}
   }else{
     lifeRegenTimer = setTimeout(updateLifeTimer, 1000);
   }
