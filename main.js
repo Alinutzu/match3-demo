@@ -57,6 +57,19 @@ let objectives = [];
 let bonusPowerups = 0;
 let lastLevelWin = false;
 
+// DARK MODE PATCH
+function setDarkMode(on) {
+  if (on) {
+    document.body.classList.add("dark-mode");
+    localStorage.setItem('match3_darkmode', '1');
+    document.getElementById('darkModeToggle').innerText = "☀️ Light Mode";
+  } else {
+    document.body.classList.remove("dark-mode");
+    localStorage.setItem('match3_darkmode', '0');
+    document.getElementById('darkModeToggle').innerText = "🌙 Dark Mode";
+  }
+}
+
 // LEVEL GENERATION (dificultate progresivă)
 function generateLevelData(level){
   return [
@@ -222,13 +235,26 @@ function drawGrid() {
       else if(grid[y][x]===12) ctx.fillStyle="#f9ebea";
       else ctx.fillStyle="#fff";
       ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
+      // PATCH: fade & scale la eliminare
       if (grid[y][x] !== -1) {
-        ctx.globalAlpha = fadeMap[y][x];
-        ctx.font = "32px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(emojis[grid[y][x]], x * tileSize + tileSize/2, y * tileSize + tileSize/2);
-        ctx.globalAlpha = 1;
+        if (typeof fadeMap !== 'undefined' && fadeMap[y][x] < 1) {
+          ctx.save();
+          ctx.globalAlpha = fadeMap[y][x];
+          ctx.translate(x * tileSize + tileSize/2, y * tileSize + tileSize/2);
+          let scale = 0.7 + 0.3 * fadeMap[y][x];
+          ctx.scale(scale, scale);
+          ctx.font = "32px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(emojis[grid[y][x]], 0, 0);
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.font = "32px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(emojis[grid[y][x]], x * tileSize + tileSize/2, y * tileSize + tileSize/2);
+        }
       }
       if (hintMove && hintMove.x1===x && hintMove.y1===y) {
         ctx.strokeStyle = "#ff0";
@@ -481,20 +507,16 @@ function processCascade() {
   }
 }
 
+// PATCH: robust collapseGrid pentru ingredientType (mere) și buline normale
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
-    // Construim o nouă coloană goală
     let newCol = Array(size).fill(-1);
     let fillPtr = size - 1;
-    // Parcurgem de jos în sus
     for (let y = size - 1; y >= 0; y--) {
-      // Dacă e portal/powerup/blocaj, copiem direct pe poziția originală
       if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
         newCol[y] = grid[y][x];
       }
-      // Dacă e ingredient, îl mutăm cât mai jos liber
       else if (grid[y][x] === ingredientType) {
-        // Caută prima poziție liberă (nu portal/blocaj/powerup)
         while (fillPtr >= 0 && (newCol[fillPtr] === 11 || newCol[fillPtr] === 12 || newCol[fillPtr] >= 7)) {
           fillPtr--;
         }
@@ -503,7 +525,6 @@ function collapseGrid() {
           fillPtr--;
         }
       }
-      // Dacă e bulină normală 0-5, o mutăm cât mai jos liber
       else if (grid[y][x] >= 0 && grid[y][x] <= 5) {
         while (fillPtr >= 0 && (newCol[fillPtr] === 11 || newCol[fillPtr] === 12 || newCol[fillPtr] >= 7)) {
           fillPtr--;
@@ -513,15 +534,12 @@ function collapseGrid() {
           fillPtr--;
         }
       }
-      // restul (-1) ignorăm
     }
-    // Umplem spațiile goale cu buline NOI (DOAR dacă poziția e liberă)
     for (let y = 0; y < size; y++) {
       if (newCol[y] === -1) {
         newCol[y] = randomNormalPiece();
       }
     }
-    // Copiem coloana reformată în grid
     for (let y = 0; y < size; y++) {
       grid[y][x] = newCol[y];
     }
@@ -758,6 +776,10 @@ document.getElementById('restart').addEventListener('click', function() {
 document.getElementById('goMap').addEventListener('click', function() {
   renderMapScreen();
 });
+document.getElementById('darkModeToggle').addEventListener('click', function() {
+  setDarkMode(!document.body.classList.contains("dark-mode"));
+});
+if (localStorage.getItem('match3_darkmode') === '1') setDarkMode(true);
 
 let paused = false;
 
