@@ -46,7 +46,8 @@ let missionColorTarget = 10;
 let missionColorProgress = 0;
 let ingredientType = 6;
 let ingredientCount = 2;
-let ingredientDelivered = 0;
+let deliveredIngredients = 0; // 🍎 livrate
+let ingredientDelivered = 0; // pentru UI vechi
 let portalPairs = [];
 let lockPositions = [];
 let hintTimeout = null;
@@ -122,7 +123,7 @@ function updateLifeTimer() {
   }
 }
 
-// LEVEL START
+// LEVEL START (folosește gameStep)
 function startLevel(lvl){
   if(lives <= 0) {
     alert("Nu mai ai vieți! Așteaptă să se regenereze.");
@@ -139,6 +140,7 @@ function startLevel(lvl){
   missionColorTarget = objectives[1].target;
   ingredientCount = objectives[2].count;
   ingredientType = 6;
+  deliveredIngredients = 0;
   ingredientDelivered = 0;
   missionColorProgress = 0;
   score = 0;
@@ -172,17 +174,18 @@ function startLevel(lvl){
       }
     }
   },1000);
-  
+
   updateLifeTimer();
+
+  // auto-gameStep la început dacă există match-uri
   setTimeout(() => {
-  let {toRemove, powerups} = detectMatches();
-  if (hasAnyMatch(toRemove)) {
-    setTimeout(processCascade, 200);
-  }
-}, 100);
+    let {toRemove, powerups} = detectMatches();
+    if (hasAnyMatch(toRemove)) {
+      setTimeout(gameStep, 200);
+    }
+  }, 100);
 }
 
-// INIT GRID + BONUS
 function randomNormalPiece() {
   return Math.floor(Math.random() * 6);
 }
@@ -194,11 +197,9 @@ function initGrid() {
     [ [0,size-1], [size-1,0] ]
   ];
   lockPositions = [];
-  // buline normale
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++)
       grid[y][x] = randomNormalPiece();
-  // ingrediente
   let placed = 0;
   while (placed < ingredientCount) {
     let x = Math.floor(Math.random()*size);
@@ -208,13 +209,11 @@ function initGrid() {
       placed++;
     }
   }
-  // portaluri
   for (let i=0; i<portalPairs.length; i++) {
     let [a,b] = portalPairs[i];
     grid[a[0]][a[1]] = 11;
     grid[b[0]][b[1]] = 11;
   }
-  // blocaje încuiate
   for (let i=0;i<2+currentLevel;i++) {
     let x = Math.floor(Math.random()*size);
     let y = Math.floor(Math.random()*size);
@@ -223,7 +222,6 @@ function initGrid() {
       lockPositions.push([y,x]);
     }
   }
-  // power-up random bonus la început
   for (let i=0;i<bonusPowerups;i++) {
     let x = Math.floor(Math.random()*size);
     let y = Math.floor(Math.random()*size);
@@ -233,7 +231,6 @@ function initGrid() {
   }
 }
 
-// DRAW & UI
 function drawGrid() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   for (let y = 0; y < size; y++)
@@ -242,7 +239,6 @@ function drawGrid() {
       else if(grid[y][x]===12) ctx.fillStyle="#f9ebea";
       else ctx.fillStyle="#fff";
       ctx.fillRect(x * tileSize, y * tileSize, tileSize - 2, tileSize - 2);
-      // PATCH: fade & scale la eliminare
       if (grid[y][x] !== -1) {
         if (typeof fadeMap !== 'undefined' && fadeMap[y][x] < 1) {
           ctx.save();
@@ -288,11 +284,10 @@ function drawGrid() {
   objectives.forEach(o=>{
     if(o.type==='score') objtxt+=`Scor: ${o.target} `;
     if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} (mai ai ${Math.max(0, o.target - missionColorProgress)}) `;
-    if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos (mai ai ${Math.max(0, o.count - ingredientDelivered)}) `;
+    if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos (mai ai ${Math.max(0, o.count - deliveredIngredients)}) `;
   });
   document.getElementById('objectives').innerText = objtxt.trim();
   document.getElementById('stars').innerText = "Stele: " + getStars().map(s => "⭐").join("");
-
   if (gameOver) {
     showEndModal();
   } else {
@@ -304,10 +299,9 @@ function getStars() {
   let ok = [];
   if (score >= objectives[0].target) ok.push(1);
   if (missionColorProgress >= missionColorTarget) ok.push(2);
-  if (ingredientDelivered >= ingredientCount && ingredientCount>0) ok.push(3);
+  if (deliveredIngredients >= ingredientCount && ingredientCount>0) ok.push(3);
   return ok;
 }
-
 function isAdjacent(x1, y1, x2, y2) {
   return (
     (Math.abs(x1 - x2) === 1 && y1 === y2) ||
@@ -319,19 +313,16 @@ function showHint() {
   hintMove = findAnyValidMove();
   drawGrid();
 }
-
 function findAnyValidMove() {
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++) {
       if (grid[y][x] === 11 || grid[y][x] === 12) continue;
-      // Dreapta
       if (x < size-1 && grid[y][x+1] >= 0 && grid[y][x+1] !== 11 && grid[y][x+1] !== 12) {
         swap(grid, x, y, x+1, y);
         let {toRemove} = detectMatches(grid);
         swap(grid, x, y, x+1, y);
         if (hasAnyMatch(toRemove)) return {x1:x, y1:y, x2:x+1, y2:y};
       }
-      // Jos
       if (y < size-1 && grid[y+1][x] >= 0 && grid[y+1][x] !== 11 && grid[y+1][x] !== 12) {
         swap(grid, x, y, x, y+1);
         let {toRemove} = detectMatches(grid);
@@ -342,38 +333,120 @@ function findAnyValidMove() {
   return null;
 }
 
-function tryPowerCombo(x1, y1, x2, y2) {
-  let p1 = grid[y1][x1], p2 = grid[y2][x2];
-  if ((p1 === 7 && p2 === 8) || (p1 === 8 && p2 === 7)) {
-    for (let i = 0; i < size; i++)
-      grid[y1][i] = -1, grid[i][x2] = -1;
-    playExplosion();
-    playPop();
-    score += size * size * 10;
-    return true;
+// 🍎 moveIngredientsDown
+function moveIngredientsDown() {
+  for (let x = 0; x < size; x++) {
+    for (let y = size - 2; y >= 0; y--) {
+      if (grid[y][x] === ingredientType) {
+        let ny = y;
+        while (ny + 1 < size && grid[ny + 1][x] === -1) {
+          grid[ny + 1][x] = ingredientType;
+          grid[ny][x] = -1;
+          ny++;
+        }
+        if (ny === size - 1) {
+          grid[ny][x] = -1;
+          deliveredIngredients++;
+          ingredientDelivered++;
+          playExplosion();
+          playPop();
+          console.log(`🍏 Măr livrat! Total: ${deliveredIngredients}`);
+        }
+      }
+    }
   }
-  if ((p1 === 9 && (p2 === 7 || p2 === 8)) || (p2 === 9 && (p1 === 7 || p1 === 8))) {
-    for (let y = 0; y < size; y++)
-      for (let x = 0; x < size; x++)
-        grid[y][x] = -1;
-    playExplosion();
-    playPop();
-    score += size * size * 20;
-    return true;
-  }
-  if (p1 === 9 && p2 === 9) {
-    for (let y = 0; y < size; y++)
-      for (let x = 0; x < size; x++)
-        grid[y][x] = -1;
-    playExplosion();
-    playPop();
-    score += size * size * 25;
-    return true;
-  }
-  return false;
 }
 
-// ------ RESTUL FUNCȚIILOR ESENȚIALE ------
+// Matche, remove, unlock, collapse, ingredientsDown, next cascade
+function gameStep() {
+  let {toRemove, powerups} = detectMatches();
+  if (hasAnyMatch(toRemove)) {
+    animateRemoval(toRemove, function() {
+      removeMatches(toRemove, powerups);
+      unlockLocks(toRemove);
+      drawGrid();
+      setTimeout(() => {
+        collapseGrid();
+        moveIngredientsDown();
+        drawGrid();
+        setTimeout(gameStep, 200);
+      }, 200);
+    });
+    return true;
+  } else {
+    if (deliveredIngredients >= ingredientCount && ingredientCount > 0) {
+      console.log("✅ Toate merele livrate! Nivel complet!");
+      // showEndModal(); // deblochează dacă vrei să se termine automat
+    }
+    return false;
+  }
+}
+
+// PATCH: robust collapseGrid pentru ingredientType (mere) și buline normale
+function collapseGrid() {
+  for (let x = 0; x < size; x++) {
+    let newCol = Array(size).fill(-1);
+    let fillPtr = size - 1;
+    for (let y = size - 1; y >= 0; y--) {
+      let val = grid[y][x];
+      if (val === 11 || val === 12 || val >= 7) {
+        newCol[y] = val;
+      }
+      else if (val === ingredientType) {
+        while (
+          fillPtr >= 0 &&
+          (newCol[fillPtr] === 11 ||
+            newCol[fillPtr] === 12 ||
+            newCol[fillPtr] >= 7 ||
+            newCol[fillPtr] === ingredientType)
+        ) {
+          fillPtr--;
+        }
+        if (fillPtr >= 0) {
+          newCol[fillPtr] = ingredientType;
+          fillPtr--;
+        }
+      }
+      else if (val >= 0 && val <= 5) {
+        while (
+          fillPtr >= 0 &&
+          (newCol[fillPtr] === 11 ||
+            newCol[fillPtr] === 12 ||
+            newCol[fillPtr] >= 7 ||
+            newCol[fillPtr] === ingredientType)
+        ) {
+          fillPtr--;
+        }
+        if (fillPtr >= 0) {
+          newCol[fillPtr] = val;
+          fillPtr--;
+        }
+      }
+    }
+    for (let y = 0; y < size; y++) {
+      if (newCol[y] === -1) {
+        newCol[y] = randomNormalPiece();
+      }
+    }
+    for (let y = 0; y < size; y++) {
+      if (grid[y][x] === ingredientType) continue;
+      grid[y][x] = newCol[y];
+    }
+  }
+  for (let i = 0; i < portalPairs.length; i++) {
+    let [a, b] = portalPairs[i];
+    if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
+      grid[b[0]][b[1]] = grid[a[0]][a[1]];
+      grid[a[0]][a[1]] = 11;
+      playSwap();
+    }
+    if (grid[b[0]][b[1]] >= 0 && grid[b[0]][b[1]] <= 6) {
+      grid[a[0]][a[1]] = grid[b[0]][b[1]];
+      grid[b[0]][b[1]] = 11;
+      playSwap();
+    }
+  }
+}
 
 function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
@@ -436,14 +509,12 @@ function detectMatches(testGrid = grid) {
   }
   return {toRemove, powerups};
 }
-
 function hasAnyMatch(matches) {
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++)
       if (matches[y][x]) return true;
   return false;
 }
-
 function animateRemoval(matches, callback) {
   let steps = 10, current = 0;
   function animStep() {
@@ -462,18 +533,13 @@ function animateRemoval(matches, callback) {
   }
   animStep();
 }
-
 function removeMatches(matches, powerups) {
   let removed = 0, colorRemoved = 0;
   for (let y = 0; y < size; y++)
     for (let x = 0; x < size; x++)
       if (matches[y][x]) {
         if (grid[y][x] === missionColor) colorRemoved++;
-        // PATCH: nu elimina merele (ingredientType) la explozie!
-        if (grid[y][x] === ingredientType) {
-          console.log("Match încercat pe măr la", x, y);
-          continue;
-        }
+        if (grid[y][x] === ingredientType) continue;
         grid[y][x] = -1;
         removed++;
       }
@@ -486,145 +552,7 @@ function removeMatches(matches, powerups) {
   if (powerups.length) playExplosion();
   return removed > 0;
 }
-
-function processCascade() {
-  let {toRemove,powerups} = detectMatches();
-  if (hasAnyMatch(toRemove)) {
-    animateRemoval(toRemove, function() {
-      removeMatches(toRemove,powerups);
-      unlockLocks(toRemove);
-      drawGrid();
-      setTimeout(() => {
-        collapseGrid();
-        checkIngredientsDelivered();
-        drawGrid();
-        setTimeout(processCascade, 200);
-      }, 200);
-    });
-    return true;
-  } else {
-    if (!findAnyValidMove()) {
-      alert("Nu există mutări posibile! Grila se reface.");
-      playFail();
-      initGrid();
-      drawGrid();
-      selected = null;
-      gameOver = false;
-      timeLeft = LEVEL_TIME_LIMITS[currentLevel-1] ?? 60;
-      moves = 15 + 5 * (currentLevel - 1);
-    }
-    return false;
-  }
-}
-
-// PATCH: robust collapseGrid pentru ingredientType (mere) și buline normale
-function collapseGrid() {
-  for (let x = 0; x < size; x++) {
-    // Construim o nouă coloană goală
-    let newCol = Array(size).fill(-1);
-    let fillPtr = size - 1;
-    // Parcurgem de jos în sus
-    for (let y = size - 1; y >= 0; y--) {
-      let val = grid[y][x];
-      // Dacă e portal/powerup/blocaj, copiem direct pe poziția originală
-      if (val === 11 || val === 12 || val >= 7) {
-        newCol[y] = val;
-      }
-      // Dacă e ingredient (măr), îl mutăm cât mai jos liber
-      else if (val === ingredientType) {
-        // Caută prima poziție liberă (nu portal/blocaj/powerup/alt măr)
-        while (
-          fillPtr >= 0 &&
-          (newCol[fillPtr] === 11 ||
-            newCol[fillPtr] === 12 ||
-            newCol[fillPtr] >= 7 ||
-            newCol[fillPtr] === ingredientType)
-        ) {
-          fillPtr--;
-        }
-        if (fillPtr >= 0) {
-          newCol[fillPtr] = ingredientType;
-          fillPtr--;
-        }
-      }
-      // Dacă e bulină normală 0-5, o mutăm cât mai jos liber (dar nu peste măr)
-      else if (val >= 0 && val <= 5) {
-        while (
-          fillPtr >= 0 &&
-          (newCol[fillPtr] === 11 ||
-            newCol[fillPtr] === 12 ||
-            newCol[fillPtr] >= 7 ||
-            newCol[fillPtr] === ingredientType)
-        ) {
-          fillPtr--;
-        }
-        if (fillPtr >= 0) {
-          newCol[fillPtr] = val;
-          fillPtr--;
-        }
-      }
-      // restul (-1) ignorăm
-    }
-    // Asigurăm păstrarea lacătelor (dacă încă există în lockPositions) la pozițiile lor specifice
-    for (const [ly, lx] of lockPositions) {
-      if (lx === x) {
-        // dacă lacătul încă ar trebui să existe, forțăm poziția aceea să fie lacăt
-        newCol[ly] = 12;
-      }
-    }
-    // Umplem spațiile goale cu buline NOI (DOAR dacă poziția e liberă și nu e măr/powerup/portal/blocaj)
-    for (let y = 0; y < size; y++) {
-      if (newCol[y] === -1) {
-        newCol[y] = randomNormalPiece();
-      }
-    }
-    // Copiem coloana reformată în grid (suprascriem întotdeauna pentru consistență)
-    for (let y = 0; y < size; y++) {
-      grid[y][x] = newCol[y];
-    }
-  }
-
-  // Portaluri: comportamentul rămâne la fel — dacă o piesă a „căzut” pe portal, o teleportăm
-  for (let i = 0; i < portalPairs.length; i++) {
-    let [a, b] = portalPairs[i];
-    if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
-      grid[b[0]][b[1]] = grid[a[0]][a[1]];
-      grid[a[0]][a[1]] = 11;
-      playSwap();
-    }
-    if (grid[b[0]][b[1]] >= 0 && grid[b[0]][b[1]] <= 6) {
-      grid[a[0]][a[1]] = grid[b[0]][b[1]];
-      grid[b[0]][b[1]] = 11;
-      playSwap();
-    }
-  }
-}
-
-function checkIngredientsDelivered() {
-  for (let x = 0; x < size; x++) {
-    let y = size - 1;
-    if (grid[y][x] === ingredientType) {
-      ingredientDelivered++;
-      grid[y][x] = randomNormalPiece();
-      playExplosion();
-      playPop();
-      if (ingredientDelivered < ingredientCount) {
-        let found = false;
-        for (let tryCol = 0; tryCol < size && !found; tryCol++) {
-          let col = Math.floor(Math.random() * size);
-          if (grid[0][col] < 6) {
-            grid[0][col] = ingredientType;
-            found = true;
-          }
-        }
-      }
-    }
-  }
-}
-
-// FIX: unlockLocks acum scoate lacatul din lockPositions și pune o piesă normală
 function unlockLocks(matches) {
-  // iterăm invers pentru a putea splice în siguranță
   for (let i = lockPositions.length - 1; i >= 0; i--) {
     const [ly, lx] = lockPositions[i];
     let unlocked = false;
@@ -638,22 +566,17 @@ function unlockLocks(matches) {
       }
     }
     if (unlocked) {
-      // eliminăm lacătul din lista de lacăte
       lockPositions.splice(i, 1);
-      // înlocuim lacătul cu o piesă normală (nu -1!) ca să nu "șteargă" merele care cad acolo
       grid[ly][lx] = randomNormalPiece();
       playExplosion();
       playPop();
-      console.log(`Deblocat lacăt la ${ly},${lx} — convertit în piesă normală.`);
     }
   }
 }
-
 function activatePowerUp(x, y) {
   let p = grid[y][x];
   if (p === 7) {
     for (let i=0;i<size;i++) {
-      // PATCH: nu elimina merele!
       if (grid[y][i] !== ingredientType) grid[y][i] = -1;
     }
     playExplosion();
@@ -684,28 +607,23 @@ function activatePowerUp(x, y) {
   drawGrid();
   setTimeout(() => {
     collapseGrid();
+    moveIngredientsDown();
     drawGrid();
-    setTimeout(processCascade, 200);
+    setTimeout(gameStep, 200);
   }, 200);
 }
-
-// SWAP FUNCTION
 function swap(arr, x1, y1, x2, y2) {
   let temp = arr[y1][x1];
   arr[y1][x1] = arr[y2][x2];
   arr[y2][x2] = temp;
 }
-
-// --- CANVAS EVENT LISTENER --- //
 canvas.addEventListener('click', function(e) {
   if (gameOver || timeLeft <= 0 || paused) return;
   if (hintTimeout) clearTimeout(hintTimeout);
   hintMove = null;
-
   const rect = canvas.getBoundingClientRect();
   const x = Math.floor((e.clientX - rect.left) / tileSize);
   const y = Math.floor((e.clientY - rect.top) / tileSize);
-
   if (x < 0 || x >= size || y < 0 || y >= size) return;
   if (grid[y][x] === 7 || grid[y][x] === 8 || grid[y][x] === 9) {
     activatePowerUp(x, y);
@@ -724,21 +642,6 @@ canvas.addEventListener('click', function(e) {
   if (selected) {
     if (isAdjacent(selected.x, selected.y, x, y)) {
       if (grid[y][x] === 11 || grid[y][x] === 12 || grid[selected.y][selected.x] === 11 || grid[selected.y][selected.x] === 12) return;
-      if(tryPowerCombo(selected.x,selected.y,x,y)){
-        selected = null;
-        moves--;
-        if (moves <= 0) {
-          gameOver = true;
-          clearInterval(timerInterval);
-          drawGrid();
-          showEndModal();
-          return;
-        }
-        setTimeout(processCascade, 200);
-        drawGrid();
-        return;
-      }
-      // PATCH: vizual swap, apoi retract swap dacă nu e match
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
@@ -755,7 +658,7 @@ canvas.addEventListener('click', function(e) {
           selected = null;
           return;
         }
-        setTimeout(processCascade, 200);
+        setTimeout(gameStep, 200);
         selected = null;
         moves--;
         if (moves <= 0) {
@@ -776,12 +679,10 @@ canvas.addEventListener('click', function(e) {
   }
   if (!gameOver) hintTimeout = setTimeout(showHint, 3000);
 });
-
-// --- END MODAL & LEVEL FLOW --- //
 function showEndModal() {
   document.getElementById('endModal').style.display = 'block';
   let msg = '';
-  if (ingredientDelivered >= ingredientCount && missionColorProgress >= missionColorTarget && score >= objectives[0].target) {
+  if (deliveredIngredients >= ingredientCount && missionColorProgress >= missionColorTarget && score >= objectives[0].target) {
     lastLevelWin = true;
     msg = `<div style="font-size:22px;margin-bottom:8px;">✅ Nivel ${currentLevel} complet!</div>`;
     msg += `<div style="margin-bottom:6px;">Scor: <b>${score}</b> | Stele: <b>${getStars().length}</b></div>`;
@@ -819,8 +720,6 @@ function showEndModal() {
     if (hsElement) hsElement.innerText = "Highscore: " + highscore;
   }
 }
-
-// Event listeners
 document.getElementById('restart').addEventListener('click', function() {
   startLevel(currentLevel);
 });
@@ -833,7 +732,6 @@ document.getElementById('darkModeToggle').addEventListener('click', function() {
 if (localStorage.getItem('match3_darkmode') === '1') setDarkMode(true);
 
 let paused = false;
-
 document.getElementById('pauseBtn').addEventListener('click', function() {
   paused = !paused;
   if (paused) {
@@ -856,7 +754,6 @@ document.getElementById('pauseBtn').addEventListener('click', function() {
     document.getElementById('pauseBtn').innerText = "Pauză";
   }
 });
-
 document.getElementById('resumeBtn').addEventListener('click', function() {
   paused = false;
   document.getElementById('pauseModal').style.display = "none";
@@ -873,6 +770,5 @@ document.getElementById('resumeBtn').addEventListener('click', function() {
   },1000);
   document.getElementById('pauseBtn').innerText = "Pauză";
 });
-
 // INIT
 renderMapScreen();
