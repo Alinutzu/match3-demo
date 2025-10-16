@@ -1,26 +1,56 @@
+:root {
+  --bg-main: #fafafa;
+  --bg-canvas: #eee;
+  --border-canvas: #48f;
+  --text: #222;
+  --btn: #48f;
+  --btn-hover: #3571e8;
+}
 body {
-  background: #fafafa;
+  background: var(--bg-main);
   font-family: Arial, sans-serif;
   text-align: center;
+  transition: background 0.3s;
 }
 canvas {
-  background: #eee;
-  border: 2px solid #48f;
+  background: var(--bg-canvas);
+  border: 2px solid var(--border-canvas);
   margin-top: 10px;
+  transition: background 0.3s, border 0.3s;
 }
 #score, #highscore, #moves, #target {
-  color: #222;
+  color: var(--text);
   font-weight: bold;
 }
 button {
   font-size: 18px;
   padding: 6px 20px;
-  background: #48f;
+  background: var(--btn);
   color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 button:hover {
-  background: #3571e8;
+  background: var(--btn-hover);
+  box-shadow: 0 2px 8px #0002;
+  transform: scale(1.08);
+}
+.buline-fade {
+  animation: fadeOutBulina 0.5s forwards;
+}
+@keyframes fadeOutBulina {
+  0% { opacity: 1; transform: scale(1); }
+  60% { opacity: 0.6; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(0.7); }
+}
+/* DARK MODE */
+body.dark-mode {
+  --bg-main: #181a1b;
+  --bg-canvas: #232527;
+  --border-canvas: #fd7e14;
+  --text: #eee;
+  --btn: #fd7e14;
+  --btn-hover: #cc5c00;
 }
