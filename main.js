@@ -710,5 +710,28 @@ document.getElementById('goMap').addEventListener('click', function() {
   renderMapScreen();
 });
 
+let paused = false;
+
+document.getElementById('pauseBtn').addEventListener('click', function() {
+  paused = !paused;
+  if (paused) {
+    clearInterval(timerInterval);
+    document.getElementById('pauseBtn').innerText = "Continuă";
+  } else {
+    timerInterval = setInterval(()=>{
+      if (timeLeft > 0) timeLeft--;
+      document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+      if(timeLeft<=0 && !gameOver){
+        timeLeft = 0;
+        gameOver = true;
+        clearInterval(timerInterval);
+        drawGrid();
+        showEndModal();
+      }
+    },1000);
+    document.getElementById('pauseBtn').innerText = "Pauză";
+  }
+});
+
 // INIT
 renderMapScreen();
