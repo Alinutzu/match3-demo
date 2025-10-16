@@ -172,7 +172,14 @@ function startLevel(lvl){
       }
     }
   },1000);
+  
   updateLifeTimer();
+  setTimeout(() => {
+  let {toRemove, powerups} = detectMatches();
+  if (hasAnyMatch(toRemove)) {
+    setTimeout(processCascade, 200);
+  }
+}, 100);
 }
 
 // INIT GRID + BONUS
