@@ -436,6 +436,8 @@ function removeMatches(matches, powerups) {
     for (let x = 0; x < size; x++)
       if (matches[y][x]) {
         if (grid[y][x] === missionColor) colorRemoved++;
+        // PATCH: nu elimina merele (ingredientType) la explozie!
+        if (grid[y][x] === ingredientType) continue;
         grid[y][x] = -1;
         removed++;
       }
@@ -472,7 +474,6 @@ function processCascade() {
       drawGrid();
       selected = null;
       gameOver = false;
-      // resetăm timerul și mutările pentru levelul curent
       timeLeft = LEVEL_TIME_LIMITS[currentLevel-1] ?? 60;
       moves = 15 + 5 * (currentLevel - 1);
     }
@@ -555,13 +556,18 @@ function unlockLocks(matches) {
 function activatePowerUp(x, y) {
   let p = grid[y][x];
   if (p === 7) {
-    for (let i=0;i<size;i++) grid[y][i] = -1;
+    for (let i=0;i<size;i++) {
+      // PATCH: nu elimina merele!
+      if (grid[y][i] !== ingredientType) grid[y][i] = -1;
+    }
     playExplosion();
     playPop();
     score += size*10;
   }
   else if (p === 8) {
-    for (let i=0;i<size;i++) grid[i][x] = -1;
+    for (let i=0;i<size;i++) {
+      if (grid[i][x] !== ingredientType) grid[i][x] = -1;
+    }
     playExplosion();
     playPop();
     score += size*10;
@@ -636,33 +642,34 @@ canvas.addEventListener('click', function(e) {
         drawGrid();
         return;
       }
-      // --- PATCH: AUTO-RETRACT SWAP IF NO MATCH ---
+      // PATCH: vizual swap, apoi retract swap dacă nu e match
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
-      let {toRemove} = detectMatches();
-      if (!hasAnyMatch(toRemove)) {
-        // Swap back, do NOT decrement moves
-        temp = grid[selected.y][selected.x];
-        grid[selected.y][selected.x] = grid[y][x];
-        grid[y][x] = temp;
-        playFail();
-        selected = null;
-        drawGrid();
-        return;
-      }
       playSwap();
       drawGrid();
-      setTimeout(processCascade, 200);
-      selected = null;
-      moves--;
-      if (moves <= 0) {
-        gameOver = true;
-        clearInterval(timerInterval);
-        drawGrid();
-        showEndModal();
-        return;
-      }
+      setTimeout(() => {
+        let {toRemove} = detectMatches();
+        if (!hasAnyMatch(toRemove)) {
+          temp = grid[selected.y][selected.x];
+          grid[selected.y][selected.x] = grid[y][x];
+          grid[y][x] = temp;
+          playFail();
+          drawGrid();
+          selected = null;
+          return;
+        }
+        setTimeout(processCascade, 200);
+        selected = null;
+        moves--;
+        if (moves <= 0) {
+          gameOver = true;
+          clearInterval(timerInterval);
+          drawGrid();
+          showEndModal();
+          return;
+        }
+      }, 250);
     } else {
       selected = {x, y};
       drawGrid();
