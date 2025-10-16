@@ -521,6 +521,28 @@ function collapseGrid() {
   }
 }
 
+function checkIngredientsDelivered() {
+  for (let x = 0; x < size; x++) {
+    let y = size - 1;
+    if (grid[y][x] === ingredientType) {
+      ingredientDelivered++;
+      grid[y][x] = randomNormalPiece();
+      playExplosion();
+      playPop();
+      if (ingredientDelivered < ingredientCount) {
+        let found = false;
+        for (let tryCol = 0; tryCol < size && !found; tryCol++) {
+          let col = Math.floor(Math.random() * size);
+          if (grid[0][col] < 6) {
+            grid[0][col] = ingredientType;
+            found = true;
+          }
+        }
+      }
+    }
+  }
+}
+
 function unlockLocks(matches) {
   for(const [ly,lx] of lockPositions){
     let unlocked=false;
