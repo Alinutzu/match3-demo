@@ -3,7 +3,6 @@ const MAX_LEVELS = 20;
 const INITIAL_LIVES = 10;
 const LIFE_REGEN_MINUTES = 1;
 const LEVEL_TIME_LIMITS = Array.from({length: MAX_LEVELS}, (_, i) => 60 + i * 10);
-// const size = 8, tileSize = 40;
 const baseEmojis = [
   '🔵','🟠','🟢','🟣','🔴','🟡','🍎','💥','💣','🌈','🍫','🌀','🔒'
 ];
@@ -72,6 +71,7 @@ function renderMapScreen() {
   document.getElementById('mapScreen').style.display = 'block';
   document.getElementById('gameScreen').style.display = 'none';
   document.getElementById('endModal').style.display = 'none';
+  document.getElementById('pauseModal').style.display = 'none';
   document.getElementById('lives').innerHTML = `Vieți: ${'❤️'.repeat(Math.max(0, lives))}${'🤍'.repeat(Math.max(0, INITIAL_LIVES-lives))} (reîncărcare: <span id="lifeTimer">00:00</span>)`;
   let html = '';
   for(let i=1;i<=MAX_LEVELS;i++){
@@ -138,22 +138,25 @@ function startLevel(lvl){
   document.getElementById('mapScreen').style.display = 'none';
   document.getElementById('gameScreen').style.display = 'block';
   document.getElementById('endModal').style.display = 'none';
+  document.getElementById('pauseModal').style.display = 'none';
   initGrid();
   drawGrid();
   document.getElementById('timer').style.display = 'block';
   document.getElementById('timeLeft').innerText = `${timeLeft}s`;
   timerInterval && clearInterval(timerInterval);
   timerInterval = setInterval(()=>{
-    if (timeLeft > 0) {
-      timeLeft--;
-    }
-    document.getElementById('timeLeft').innerText = `${timeLeft}s`;
-    if(timeLeft<=0 && !gameOver){
-      timeLeft = 0;
-      gameOver = true;
-      clearInterval(timerInterval);
-      drawGrid();
-      showEndModal();
+    if (!paused) {
+      if (timeLeft > 0) {
+        timeLeft--;
+      }
+      document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+      if(timeLeft<=0 && !gameOver){
+        timeLeft = 0;
+        gameOver = true;
+        clearInterval(timerInterval);
+        drawGrid();
+        showEndModal();
+      }
     }
   },1000);
   updateLifeTimer();
@@ -339,7 +342,6 @@ function tryPowerCombo(x1, y1, x2, y2) {
 
 // ------ RESTUL FUNCȚIILOR ESENȚIALE ------
 
-// (1) detectMatches
 function detectMatches(testGrid = grid) {
   let toRemove = Array(size).fill().map(() => Array(size).fill(false));
   let powerups = [];
@@ -594,7 +596,7 @@ function swap(arr, x1, y1, x2, y2) {
 
 // --- CANVAS EVENT LISTENER --- //
 canvas.addEventListener('click', function(e) {
-  if (gameOver || timeLeft <= 0) return;
+  if (gameOver || timeLeft <= 0 || paused) return;
   if (hintTimeout) clearTimeout(hintTimeout);
   hintMove = null;
 
@@ -634,9 +636,21 @@ canvas.addEventListener('click', function(e) {
         drawGrid();
         return;
       }
+      // --- PATCH: AUTO-RETRACT SWAP IF NO MATCH ---
       let temp = grid[selected.y][selected.x];
       grid[selected.y][selected.x] = grid[y][x];
       grid[y][x] = temp;
+      let {toRemove} = detectMatches();
+      if (!hasAnyMatch(toRemove)) {
+        // Swap back, do NOT decrement moves
+        temp = grid[selected.y][selected.x];
+        grid[selected.y][selected.x] = grid[y][x];
+        grid[y][x] = temp;
+        playFail();
+        selected = null;
+        drawGrid();
+        return;
+      }
       playSwap();
       drawGrid();
       setTimeout(processCascade, 200);
@@ -751,12 +765,6 @@ document.getElementById('resumeBtn').addEventListener('click', function() {
     }
   },1000);
   document.getElementById('pauseBtn').innerText = "Pauză";
-});
-
-// În eventul pe canvas:
-canvas.addEventListener('click', function(e) {
-  if (gameOver || timeLeft <= 0 || paused) return;
-  // ... restul codului ...
 });
 
 // INIT
