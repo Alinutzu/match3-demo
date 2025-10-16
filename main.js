@@ -3,7 +3,11 @@ const MAX_LEVELS = 20;
 const INITIAL_LIVES = 10;
 const LIFE_REGEN_MINUTES = 1;
 const LEVEL_TIME_LIMITS = Array.from({length: MAX_LEVELS}, (_, i) => 60 + i * 10);
-const size = 8, tileSize = 40;
+// const size = 8, tileSize = 40;
+const tileSize = canvas.width / size;
+const size = 8;
+const canvas = document.getElementById('game');
+const tileSize = canvas.width / size;
 const baseEmojis = [
   '🔵','🟠','🟢','🟣','🔴','🟡','🍎','💥','💣','🌈','🍫','🌀','🔒'
 ];
