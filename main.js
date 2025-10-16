@@ -483,29 +483,50 @@ function processCascade() {
 
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
-    let stack = [];
-    // Colectăm bulinele normale și merele
+    // Construim o nouă coloană goală
+    let newCol = Array(size).fill(-1);
+    let fillPtr = size - 1;
+    // Parcurgem de jos în sus
     for (let y = size - 1; y >= 0; y--) {
-      // Merele (ingredientType) și bulinele normale (0-5) se pun în stack, restul nu
-      if (grid[y][x] >= 0 && grid[y][x] <= 5) {
-        stack.push(grid[y][x]);
+      // Dacă e portal/powerup/blocaj, copiem direct pe poziția originală
+      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
+        newCol[y] = grid[y][x];
       }
-      if (grid[y][x] === ingredientType) {
-        stack.push(ingredientType);
+      // Dacă e ingredient, îl mutăm cât mai jos liber
+      else if (grid[y][x] === ingredientType) {
+        // Caută prima poziție liberă (nu portal/blocaj/powerup)
+        while (fillPtr >= 0 && (newCol[fillPtr] === 11 || newCol[fillPtr] === 12 || newCol[fillPtr] >= 7)) {
+          fillPtr--;
+        }
+        if (fillPtr >= 0) {
+          newCol[fillPtr] = ingredientType;
+          fillPtr--;
+        }
+      }
+      // Dacă e bulină normală 0-5, o mutăm cât mai jos liber
+      else if (grid[y][x] >= 0 && grid[y][x] <= 5) {
+        while (fillPtr >= 0 && (newCol[fillPtr] === 11 || newCol[fillPtr] === 12 || newCol[fillPtr] >= 7)) {
+          fillPtr--;
+        }
+        if (fillPtr >= 0) {
+          newCol[fillPtr] = grid[y][x];
+          fillPtr--;
+        }
+      }
+      // restul (-1) ignorăm
+    }
+    // Umplem spațiile goale cu buline NOI (DOAR dacă poziția e liberă)
+    for (let y = 0; y < size; y++) {
+      if (newCol[y] === -1) {
+        newCol[y] = randomNormalPiece();
       }
     }
-    // Reumplem coloana pornind de jos în sus
-    for (let y = size - 1; y >= 0; y--) {
-      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
-        continue; // nu reumple powerupuri, portaluri, blocaje
-      }
-      if (stack.length > 0) {
-        grid[y][x] = stack.shift();
-      } else {
-        grid[y][x] = randomNormalPiece();
-      }
+    // Copiem coloana reformată în grid
+    for (let y = 0; y < size; y++) {
+      grid[y][x] = newCol[y];
     }
   }
+  // Portaluri
   for (let i = 0; i < portalPairs.length; i++) {
     let [a, b] = portalPairs[i];
     if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
