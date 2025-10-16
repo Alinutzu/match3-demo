@@ -471,10 +471,10 @@ function removeMatches(matches, powerups) {
         if (grid[y][x] === missionColor) colorRemoved++;
         // PATCH: nu elimina merele (ingredientType) la explozie!
         if (grid[y][x] === ingredientType) {
-        console.log("Match încercat pe măr la", x, y);
-        continue;
- }
-       grid[y][x] = -1;
+          console.log("Match încercat pe măr la", x, y);
+          continue;
+        }
+        grid[y][x] = -1;
         removed++;
       }
   for (const p of powerups)
@@ -525,12 +525,13 @@ function collapseGrid() {
     let fillPtr = size - 1;
     // Parcurgem de jos în sus
     for (let y = size - 1; y >= 0; y--) {
+      let val = grid[y][x];
       // Dacă e portal/powerup/blocaj, copiem direct pe poziția originală
-      if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
-        newCol[y] = grid[y][x];
+      if (val === 11 || val === 12 || val >= 7) {
+        newCol[y] = val;
       }
-      // Dacă e ingredient (măr), îl mutăm cât mai jos liber, DAR niciodată nu suprascriem un alt măr
-      else if (grid[y][x] === ingredientType) {
+      // Dacă e ingredient (măr), îl mutăm cât mai jos liber
+      else if (val === ingredientType) {
         // Caută prima poziție liberă (nu portal/blocaj/powerup/alt măr)
         while (
           fillPtr >= 0 &&
@@ -547,7 +548,7 @@ function collapseGrid() {
         }
       }
       // Dacă e bulină normală 0-5, o mutăm cât mai jos liber (dar nu peste măr)
-      else if (grid[y][x] >= 0 && grid[y][x] <= 5) {
+      else if (val >= 0 && val <= 5) {
         while (
           fillPtr >= 0 &&
           (newCol[fillPtr] === 11 ||
@@ -558,29 +559,32 @@ function collapseGrid() {
           fillPtr--;
         }
         if (fillPtr >= 0) {
-          newCol[fillPtr] = grid[y][x];
+          newCol[fillPtr] = val;
           fillPtr--;
         }
       }
       // restul (-1) ignorăm
     }
+    // Asigurăm păstrarea lacătelor (dacă încă există în lockPositions) la pozițiile lor specifice
+    for (const [ly, lx] of lockPositions) {
+      if (lx === x) {
+        // dacă lacătul încă ar trebui să existe, forțăm poziția aceea să fie lacăt
+        newCol[ly] = 12;
+      }
+    }
     // Umplem spațiile goale cu buline NOI (DOAR dacă poziția e liberă și nu e măr/powerup/portal/blocaj)
     for (let y = 0; y < size; y++) {
-      if (
-        newCol[y] === -1
-      ) {
+      if (newCol[y] === -1) {
         newCol[y] = randomNormalPiece();
       }
     }
-    // Copiem coloana reformată în grid
+    // Copiem coloana reformată în grid (suprascriem întotdeauna pentru consistență)
     for (let y = 0; y < size; y++) {
-      // PATCH: nu suprascrie niciodată un măr!
-      if (grid[y][x] === ingredientType) continue;
       grid[y][x] = newCol[y];
     }
   }
 
-  // Portaluri
+  // Portaluri: comportamentul rămâne la fel — dacă o piesă a „căzut” pe portal, o teleportăm
   for (let i = 0; i < portalPairs.length; i++) {
     let [a, b] = portalPairs[i];
     if (grid[a[0]][a[1]] >= 0 && grid[a[0]][a[1]] <= 6) {
@@ -618,18 +622,29 @@ function checkIngredientsDelivered() {
   }
 }
 
+// FIX: unlockLocks acum scoate lacatul din lockPositions și pune o piesă normală
 function unlockLocks(matches) {
-  for(const [ly,lx] of lockPositions){
-    let unlocked=false;
-    for(const [dy,dx] of [[0,1],[1,0],[0,-1],[-1,0]]){
-      let yy=ly+dy,xx=lx+dx;
-      if(yy>=0&&yy<size&&xx>=0&&xx<size){
-        if(matches[yy][xx]) unlocked=true;
+  // iterăm invers pentru a putea splice în siguranță
+  for (let i = lockPositions.length - 1; i >= 0; i--) {
+    const [ly, lx] = lockPositions[i];
+    let unlocked = false;
+    for (const [dy, dx] of [[0,1],[1,0],[0,-1],[-1,0]]) {
+      let yy = ly + dy, xx = lx + dx;
+      if (yy >= 0 && yy < size && xx >= 0 && xx < size) {
+        if (matches[yy][xx]) {
+          unlocked = true;
+          break;
+        }
       }
     }
-    if(unlocked){
-      grid[ly][lx]=-1;
+    if (unlocked) {
+      // eliminăm lacătul din lista de lacăte
+      lockPositions.splice(i, 1);
+      // înlocuim lacătul cu o piesă normală (nu -1!) ca să nu "șteargă" merele care cad acolo
+      grid[ly][lx] = randomNormalPiece();
       playExplosion();
+      playPop();
+      console.log(`Deblocat lacăt la ${ly},${lx} — convertit în piesă normală.`);
     }
   }
 }
