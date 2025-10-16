@@ -517,14 +517,25 @@ function processCascade() {
 // PATCH: robust collapseGrid pentru ingredientType (mere) și buline normale
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
+    // Construim o nouă coloană goală
     let newCol = Array(size).fill(-1);
     let fillPtr = size - 1;
+    // Parcurgem de jos în sus
     for (let y = size - 1; y >= 0; y--) {
+      // Dacă e portal/powerup/blocaj, copiem direct pe poziția originală
       if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
         newCol[y] = grid[y][x];
       }
+      // Dacă e ingredient (măr), îl mutăm cât mai jos liber, DAR niciodată nu suprascriem un alt măr
       else if (grid[y][x] === ingredientType) {
-        while (fillPtr >= 0 && (newCol[fillPtr] === 11 || newCol[fillPtr] === 12 || newCol[fillPtr] >= 7)) {
+        // Caută prima poziție liberă (nu portal/blocaj/powerup/alt măr)
+        while (
+          fillPtr >= 0 &&
+          (newCol[fillPtr] === 11 ||
+            newCol[fillPtr] === 12 ||
+            newCol[fillPtr] >= 7 ||
+            newCol[fillPtr] === ingredientType)
+        ) {
           fillPtr--;
         }
         if (fillPtr >= 0) {
@@ -532,8 +543,15 @@ function collapseGrid() {
           fillPtr--;
         }
       }
+      // Dacă e bulină normală 0-5, o mutăm cât mai jos liber (dar nu peste măr)
       else if (grid[y][x] >= 0 && grid[y][x] <= 5) {
-        while (fillPtr >= 0 && (newCol[fillPtr] === 11 || newCol[fillPtr] === 12 || newCol[fillPtr] >= 7)) {
+        while (
+          fillPtr >= 0 &&
+          (newCol[fillPtr] === 11 ||
+            newCol[fillPtr] === 12 ||
+            newCol[fillPtr] >= 7 ||
+            newCol[fillPtr] === ingredientType)
+        ) {
           fillPtr--;
         }
         if (fillPtr >= 0) {
@@ -541,16 +559,24 @@ function collapseGrid() {
           fillPtr--;
         }
       }
+      // restul (-1) ignorăm
     }
+    // Umplem spațiile goale cu buline NOI (DOAR dacă poziția e liberă și nu e măr/powerup/portal/blocaj)
     for (let y = 0; y < size; y++) {
-      if (newCol[y] === -1) {
+      if (
+        newCol[y] === -1
+      ) {
         newCol[y] = randomNormalPiece();
       }
     }
+    // Copiem coloana reformată în grid
     for (let y = 0; y < size; y++) {
+      // PATCH: nu suprascrie niciodată un măr!
+      if (grid[y][x] === ingredientType) continue;
       grid[y][x] = newCol[y];
     }
   }
+
   // Portaluri
   for (let i = 0; i < portalPairs.length; i++) {
     let [a, b] = portalPairs[i];
