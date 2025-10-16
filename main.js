@@ -484,14 +484,20 @@ function processCascade() {
 function collapseGrid() {
   for (let x = 0; x < size; x++) {
     let stack = [];
+    // Colectăm bulinele normale și merele
     for (let y = size - 1; y >= 0; y--) {
-      if (grid[y][x] >= 0 && grid[y][x] <= 6) {
+      // Merele (ingredientType) și bulinele normale (0-5) se pun în stack, restul nu
+      if (grid[y][x] >= 0 && grid[y][x] <= 5) {
         stack.push(grid[y][x]);
       }
+      if (grid[y][x] === ingredientType) {
+        stack.push(ingredientType);
+      }
     }
+    // Reumplem coloana pornind de jos în sus
     for (let y = size - 1; y >= 0; y--) {
       if (grid[y][x] === 11 || grid[y][x] === 12 || grid[y][x] >= 7) {
-        continue;
+        continue; // nu reumple powerupuri, portaluri, blocaje
       }
       if (stack.length > 0) {
         grid[y][x] = stack.shift();
@@ -511,28 +517,6 @@ function collapseGrid() {
       grid[a[0]][a[1]] = grid[b[0]][b[1]];
       grid[b[0]][b[1]] = 11;
       playSwap();
-    }
-  }
-}
-
-function checkIngredientsDelivered() {
-  for (let x = 0; x < size; x++) {
-    let y = size - 1;
-    if (grid[y][x] === ingredientType) {
-      ingredientDelivered++;
-      grid[y][x] = randomNormalPiece();
-      playExplosion();
-      playPop();
-      if (ingredientDelivered < ingredientCount) {
-        let found = false;
-        for (let tryCol = 0; tryCol < size && !found; tryCol++) {
-          let col = Math.floor(Math.random() * size);
-          if (grid[0][col] < 6) {
-            grid[0][col] = ingredientType;
-            found = true;
-          }
-        }
-      }
     }
   }
 }
