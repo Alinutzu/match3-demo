@@ -470,8 +470,11 @@ function removeMatches(matches, powerups) {
       if (matches[y][x]) {
         if (grid[y][x] === missionColor) colorRemoved++;
         // PATCH: nu elimina merele (ingredientType) la explozie!
-        if (grid[y][x] === ingredientType) continue;
-        grid[y][x] = -1;
+        if (grid[y][x] === ingredientType) {
+        console.log("Match încercat pe măr la", x, y);
+        continue;
+ }
+       grid[y][x] = -1;
         removed++;
       }
   for (const p of powerups)
