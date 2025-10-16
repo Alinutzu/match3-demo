@@ -718,7 +718,9 @@ document.getElementById('pauseBtn').addEventListener('click', function() {
   if (paused) {
     clearInterval(timerInterval);
     document.getElementById('pauseBtn').innerText = "Continuă";
+    document.getElementById('pauseModal').style.display = "block";
   } else {
+    document.getElementById('pauseModal').style.display = "none";
     timerInterval = setInterval(()=>{
       if (timeLeft > 0) timeLeft--;
       document.getElementById('timeLeft').innerText = `${timeLeft}s`;
@@ -732,6 +734,29 @@ document.getElementById('pauseBtn').addEventListener('click', function() {
     },1000);
     document.getElementById('pauseBtn').innerText = "Pauză";
   }
+});
+
+document.getElementById('resumeBtn').addEventListener('click', function() {
+  paused = false;
+  document.getElementById('pauseModal').style.display = "none";
+  timerInterval = setInterval(()=>{
+    if (timeLeft > 0) timeLeft--;
+    document.getElementById('timeLeft').innerText = `${timeLeft}s`;
+    if(timeLeft<=0 && !gameOver){
+      timeLeft = 0;
+      gameOver = true;
+      clearInterval(timerInterval);
+      drawGrid();
+      showEndModal();
+    }
+  },1000);
+  document.getElementById('pauseBtn').innerText = "Pauză";
+});
+
+// În eventul pe canvas:
+canvas.addEventListener('click', function(e) {
+  if (gameOver || timeLeft <= 0 || paused) return;
+  // ... restul codului ...
 });
 
 // INIT
