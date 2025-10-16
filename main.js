@@ -592,7 +592,7 @@ function unlockLocks(matches) {
       }
     }
     if(unlocked){
-      grid[ly][lx]=0;
+      grid[ly][lx]=0();
       playExplosion();
     }
   }
