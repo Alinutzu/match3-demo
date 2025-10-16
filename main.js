@@ -102,7 +102,7 @@ function updateLifeTimer() {
     localStorage.setItem('match3_lastLifeLoss',lastLifeLoss);
     // Doar actualizează viețile, NU schimba ecranul!
     // NU apela renderMapScreen() aici!
-}
+  }
   else{
     lifeRegenTimer = setTimeout(updateLifeTimer, 1000);
   }
@@ -143,9 +143,12 @@ function startLevel(lvl){
   document.getElementById('timeLeft').innerText = `${timeLeft}s`;
   timerInterval && clearInterval(timerInterval);
   timerInterval = setInterval(()=>{
-    timeLeft--;
+    if (timeLeft > 0) {
+      timeLeft--;
+    }
     document.getElementById('timeLeft').innerText = `${timeLeft}s`;
     if(timeLeft<=0 && !gameOver){
+      timeLeft = 0;
       gameOver = true;
       clearInterval(timerInterval);
       drawGrid();
@@ -247,8 +250,8 @@ function drawGrid() {
   let objtxt = '';
   objectives.forEach(o=>{
     if(o.type==='score') objtxt+=`Scor: ${o.target} `;
-    if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} `;
-    if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos `;
+    if(o.type==='color') objtxt+=`Elimină ${o.target} ${emojis[o.color]} (mai ai ${Math.max(0, o.target - missionColorProgress)}) `;
+    if(o.type==='ingredient') objtxt+=`Adu ${o.count} ${emojis[ingredientType]} jos (mai ai ${Math.max(0, o.count - ingredientDelivered)}) `;
   });
   document.getElementById('objectives').innerText = objtxt.trim();
   document.getElementById('stars').innerText = "Stele: " + getStars().map(s => "⭐").join("");
@@ -466,6 +469,9 @@ function processCascade() {
       drawGrid();
       selected = null;
       gameOver = false;
+      // resetăm timerul și mutările pentru levelul curent
+      timeLeft = LEVEL_TIME_LIMITS[currentLevel-1] ?? 60;
+      moves = 15 + 5 * (currentLevel - 1);
     }
     return false;
   }
@@ -599,7 +605,13 @@ canvas.addEventListener('click', function(e) {
   if (grid[y][x] === 7 || grid[y][x] === 8 || grid[y][x] === 9) {
     activatePowerUp(x, y);
     moves--;
-    if (moves <= 0) gameOver = true;
+    if (moves <= 0) {
+      gameOver = true;
+      clearInterval(timerInterval);
+      drawGrid();
+      showEndModal();
+      return;
+    }
     drawGrid();
     return;
   }
@@ -610,7 +622,13 @@ canvas.addEventListener('click', function(e) {
       if(tryPowerCombo(selected.x,selected.y,x,y)){
         selected = null;
         moves--;
-        if (moves <= 0) gameOver = true;
+        if (moves <= 0) {
+          gameOver = true;
+          clearInterval(timerInterval);
+          drawGrid();
+          showEndModal();
+          return;
+        }
         setTimeout(processCascade, 200);
         drawGrid();
         return;
@@ -623,7 +641,13 @@ canvas.addEventListener('click', function(e) {
       setTimeout(processCascade, 200);
       selected = null;
       moves--;
-      if (moves <= 0) gameOver = true;
+      if (moves <= 0) {
+        gameOver = true;
+        clearInterval(timerInterval);
+        drawGrid();
+        showEndModal();
+        return;
+      }
     } else {
       selected = {x, y};
       drawGrid();
