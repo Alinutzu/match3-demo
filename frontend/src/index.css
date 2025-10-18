@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-gradient-start: #1a0033;
+  --bg-gradient-end: #330066;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+  min-height: 100vh;
+}
+
+.gem-piece {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.gem-piece:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 4px 8px rgba(255,255,255,0.5));
+}
+
+.gem-piece.selected {
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.particle {
+  position: absolute;
+  pointer-events: none;
+  animation: particle-float 1s ease-out forwards;
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Dark mode */
+body.dark-mode {
+  --bg-gradient-start: #0a0015;
+  --bg-gradient-end: #1a0033;
+}
+
+/* Gem glow effects */
+.gem-red { filter: drop-shadow(0 0 8px #ff4444); }
+.gem-blue { filter: drop-shadow(0 0 8px #4444ff); }
+.gem-green { filter: drop-shadow(0 0 8px #44ff44); }
+.gem-yellow { filter: drop-shadow(0 0 8px #ffff44); }
+.gem-purple { filter: drop-shadow(0 0 8px #ff44ff); }
+.gem-orange { filter: drop-shadow(0 0 8px #ff8844); }
