@@ -1,16 +1,58 @@
-# React + Vite
+# 💎 Bijuterii Mistice / Mystic Jewels
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, beautiful Match-3 puzzle game built with React, featuring stunning gem animations and Candy Crush-like gameplay mechanics.
 
-Currently, two official plugins are available:
+## 🎮 Game Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Core Gameplay
+- **Match-3 Mechanics**: Match 3 or more gems of the same color to score points
+- **30 Progressive Levels**: Each level increases in difficulty with unique challenges
+- **Multiple Game Modes**: Score targets, Color collection, Ingredient delivery
+  
+### Special Elements
+- **💎 6 Gem Types**: Red, Blue, Green, Yellow, Purple, Orange gems with beautiful gradients
+- **💥 Power-ups**: Striped Gems (4-match), Bomb Gems (5-match), Lightning Gems (6+ match)
+- **🌀 Portals**: Teleport gems across the board
+- **🔒 Locked Tiles**: Break by matching adjacent gems
+- **🍎 Ingredients**: Deliver to the bottom of the board
 
-## React Compiler
+### Game Systems
+- **❤️ Lives System**: 10 lives that regenerate over time
+- **⭐ 3-Star Rating**: Complete all objectives for maximum stars
+- **⏱️ Timer Mode**: Beat levels before time runs out
+- **🎯 Move Limits**: Strategic gameplay within move constraints
+- **🏆 Leaderboard**: Track your best scores
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Visual & UX Features
+- **Beautiful Animations**: Smooth gem movements and match effects
+- **Gradient Gems**: Unique color gradients with shine effects
+- **Hint System**: Shows possible moves after 5 seconds
+- **Dark Mode**: Toggle between light and dark themes
+- **Bilingual**: Switch between Romanian and English
 
-## Expanding the ESLint configuration
+## 🚀 Tech Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **React 19** - Modern UI framework
+- **Vite** - Fast build tool
+- **Tailwind CSS 3** - Utility-first styling
+- **Framer Motion** - Smooth animations
+
+## 🎯 How to Play
+
+1. Click any unlocked level on the map
+2. Swap adjacent gems to create matches of 3+
+3. Complete objectives: reach score, collect colors, deliver ingredients
+4. Use power-ups strategically
+5. Win 3 stars by completing all objectives!
+
+## 🔧 Development
+
+```bash
+yarn install    # Install dependencies
+yarn start      # Run dev server
+yarn build      # Build for production
+```
+
+---
+
+**Enjoy the game! 💎✨**
